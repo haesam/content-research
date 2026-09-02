@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "vercel dev"
+    "dev": "vercel dev",
+    "dev:local": "node scripts/dev-server.js",
+    "test": "node --test test/survey.test.js test/api.test.js",
+    "e2e": "node scripts/e2e-check.js"
   },
   "dependencies": {
     "googleapis": "^144.0.0"
