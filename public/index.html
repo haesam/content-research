@@ -121,6 +121,15 @@
   .done .lead{margin-bottom:26px}
   .done .btn{max-width:360px;margin:0 auto}
   .linkbox{margin:8px auto 0;padding:18px 20px;border-radius:10px;background:rgba(255,217,160,.08);border:1px dashed rgba(255,200,150,.35);font-size:14.5px;line-height:1.8;color:rgba(240,228,255,.9)}
+  .passbox{display:flex;align-items:center;justify-content:center;gap:14px;max-width:360px;margin:0 auto 18px;padding:14px 18px;border-radius:12px;background:rgba(255,217,160,.1);border:1px solid rgba(255,200,150,.35)}
+  .passbox .passlabel{font-size:13px;letter-spacing:.08em;color:#FFC98A;font-weight:700;white-space:nowrap}
+  .passbox .passcode{font-size:30px;letter-spacing:.28em;color:#FFD9A0;font-weight:800;text-shadow:0 0 18px rgba(255,190,130,.4);margin-left:.1em}
+  .passbox .copy{padding:8px 13px;border-radius:999px;border:1px solid rgba(255,200,150,.4);background:transparent;color:#FFD9A0;font-size:12.5px;font-weight:700;font-family:inherit;cursor:pointer;white-space:nowrap}
+  .passbox .copy:hover{background:rgba(255,217,160,.1)}
+  .rooms{display:flex;flex-direction:column;gap:12px;max-width:360px;margin:0 auto}
+  .rooms .btn{width:100%}
+  .rooms .btn small{display:block;width:100%;font-size:12px;font-weight:600;opacity:.75;margin-top:2px}
+  .done .pick{font-size:13px;color:rgba(230,214,240,.6);margin:0 0 12px}
   .done .again{margin-top:22px}
   .done .again .btn{max-width:260px}
 
@@ -306,7 +315,13 @@
         <span class="eyebrow" id="doneEyebrow">WELCOME · 입장 완료</span>
         <h2 id="doneTitle"></h2>
         <p class="lead" id="doneLead"></p>
-        <a class="btn kakao" id="kakaoBtn" href="#" target="_blank" rel="noopener noreferrer" hidden>챌린지 단톡방 입장하기</a>
+        <div class="passbox" id="passBox" hidden>
+          <span class="passlabel">입장 암호</span>
+          <strong class="passcode" id="passCode"></strong>
+          <button type="button" class="copy" id="copyPass">복사</button>
+        </div>
+        <p class="pick" id="pickHint" hidden>원하는 챌린지를 골라 입장해주세요. 여러 방에 들어가도 괜찮아요.</p>
+        <div class="rooms" id="roomList"></div>
         <div class="linkbox" id="noLinkBox" hidden>챌린지 단톡방 링크는 준비되는 대로 안내드릴게요.<br>전달받으신 카카오톡을 확인해주세요.<br><small>링크가 준비되면 이 페이지에서 성함과 연락처만 다시 제출해도 바로 볼 수 있어요.</small></div>
         <p class="note" id="doneNote"></p>
       </div>
@@ -442,26 +457,48 @@
       return;
     }
     clearDraft();
-    renderDone({ name: (body.name || '').trim(), already: !!data.alreadySubmitted, kakaoLink: data.kakaoLink || null });
+    renderDone({ name: (body.name || '').trim(), already: !!data.alreadySubmitted, rooms: Array.isArray(data.rooms) ? data.rooms : [] });
   });
 
   /* ---------- 완료 ---------- */
-  function renderDone({ name, already, kakaoLink }){
-    const title = $('#doneTitle'), lead = $('#doneLead'), btn = $('#kakaoBtn'), box = $('#noLinkBox'), note = $('#doneNote'), eyebrow = $('#doneEyebrow');
+  const copyBtn = $('#copyPass');
+  copyBtn.addEventListener('click', async () => {
+    const code = $('#passCode').textContent;
+    try { await navigator.clipboard.writeText(code); copyBtn.textContent = '복사됨'; }
+    catch (_) { copyBtn.textContent = code; }
+    setTimeout(() => { copyBtn.textContent = '복사'; }, 1800);
+  });
+
+  function renderDone({ name, already, rooms }){
+    const title = $('#doneTitle'), lead = $('#doneLead'), box = $('#noLinkBox'), note = $('#doneNote'), eyebrow = $('#doneEyebrow');
+    const passBox = $('#passBox'), passCode = $('#passCode'), pickHint = $('#pickHint'), roomList = $('#roomList');
+    const hasRooms = rooms.length > 0;
     if(already){
       eyebrow.textContent = 'WELCOME BACK · 다시 오셨군요';
       title.innerHTML = '다시 오셨군요,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
-      lead.textContent = kakaoLink ? '이미 제출을 완료하셨어요. 아래에서 단톡방으로 바로 입장하실 수 있어요.' : '이미 제출을 완료하셨어요.';
+      lead.textContent = hasRooms ? '이미 제출을 완료하셨어요. 아래에서 단톡방으로 바로 입장하실 수 있어요.' : '이미 제출을 완료하셨어요.';
     } else {
       eyebrow.textContent = 'WELCOME · 입장 완료';
       title.innerHTML = '환영합니다,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
-      lead.textContent = kakaoLink ? '제출이 완료되었어요. 챌린지 단톡방에서 이어서 만나요.' : '제출이 완료되었어요.';
+      lead.textContent = hasRooms ? '제출이 완료되었어요. 챌린지 단톡방에서 이어서 만나요.' : '제출이 완료되었어요.';
     }
-    if(kakaoLink){
-      btn.href = kakaoLink; btn.hidden = false; box.hidden = true;
-      note.textContent = '링크가 열리지 않으면 전달받으신 카카오톡으로 문의해주세요.';
+    roomList.innerHTML = '';
+    if(hasRooms){
+      /* 모든 방의 암호가 같으면 위에 한 번만 크게, 다르면 버튼마다 표시 */
+      const codes = rooms.map(r => r.password || '');
+      const shared = codes.every(c => c === codes[0]) ? codes[0] : null;
+      if(shared){ passCode.textContent = shared; passBox.hidden = false; } else { passBox.hidden = true; }
+      rooms.forEach(r => {
+        const a = document.createElement('a');
+        a.className = 'btn kakao'; a.href = r.link; a.target = '_blank'; a.rel = 'noopener noreferrer';
+        a.innerHTML = escapeHtml(r.name) + ' 입장하기' + (!shared && r.password ? '<small>입장 암호 ' + escapeHtml(r.password) + '</small>' : '');
+        roomList.appendChild(a);
+      });
+      pickHint.hidden = rooms.length < 2;
+      box.hidden = true;
+      note.textContent = '카카오톡에서 암호를 물어보면 위 암호를 입력해주세요. 링크가 열리지 않으면 전달받으신 카카오톡으로 문의해주세요.';
     } else {
-      btn.hidden = true; box.hidden = false; note.textContent = '';
+      passBox.hidden = true; pickHint.hidden = true; box.hidden = false; note.textContent = '';
     }
     showStage('done');
   }

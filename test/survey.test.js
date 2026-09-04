@@ -18,17 +18,19 @@ test('isValidPhone / formatPhone', () => {
   assert.equal(s.formatPhone('0212345678'), '021-234-5678');
 });
 
-test('pickChallengeLink prefers cohort match, falls back to 전체, skips inactive/empty', () => {
-  const links = [
-    { cohort: '3기', link: 'https://a', active: true },
-    { cohort: '4기', link: 'https://b', active: false },
-    { cohort: '전체', link: 'https://default', active: true },
-  ];
-  assert.equal(s.pickChallengeLink(links, '3기'), 'https://a');
-  assert.equal(s.pickChallengeLink(links, '4기'), 'https://default');
-  assert.equal(s.pickChallengeLink(links, ''), 'https://default');
-  assert.equal(s.pickChallengeLink([{ cohort: '전체', link: '', active: true }], '3기'), null);
-  assert.equal(s.pickChallengeLink([], '3기'), null);
+test('activeRooms keeps active rooms with links, trims, defaults name', () => {
+  const rooms = s.activeRooms([
+    { name: ' 콘텐츠 ', link: ' https://a ', password: ' 2631 ', active: true },
+    { name: '제작', link: 'https://b', password: '2631', active: false },
+    { name: '영업', link: '', password: '2631', active: true },
+    { name: '', link: 'https://d', password: '', active: true },
+  ]);
+  assert.deepEqual(rooms, [
+    { name: '콘텐츠', link: 'https://a', password: '2631' },
+    { name: '챌린지 단톡방', link: 'https://d', password: '' },
+  ]);
+  assert.equal(s.activeRooms(s.DEFAULT_ROOMS).length, 3);
+  assert.ok(s.DEFAULT_ROOMS.every((r) => r.password === '2631'));
 });
 
 test('validateSurvey: cleans values, formats phone, flags missing/invalid', () => {
@@ -48,20 +50,21 @@ test('validateSurvey: cleans values, formats phone, flags missing/invalid', () =
   assert.ok(!bad.errors.nickname);
 });
 
-test('buildSurveyRow follows SURVEY_COLUMNS order', () => {
+test('buildSurveyRow follows SURVEY_COLUMNS order and lists room names', () => {
   const values = s.validateSurvey(Object.assign({}, full, { nickname: 'nick' })).values;
-  const row = s.buildSurveyRow({ values, kakaoLink: 'https://k', now: new Date('2026-09-02T00:00:00Z') });
+  const rooms = s.activeRooms(s.DEFAULT_ROOMS);
+  const row = s.buildSurveyRow({ values, rooms, now: new Date('2026-09-02T00:00:00Z') });
   assert.equal(row.length, s.SURVEY_COLUMNS.length);
   assert.equal(row[0], '2026-09-02 09:00:00');
   assert.equal(row[1], '3기');
   assert.equal(row[2], '홍 길동');
   assert.equal(row[3], 'nick');
   assert.equal(row[4], '010-1234-5678');
-  assert.equal(row[row.length - 1], 'https://k');
+  assert.equal(row[row.length - 1], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
 });
 
 test('findExistingSubmission compares digits only', () => {
-  const rows = [{ phone: '01012345678', kakaoLink: 'x' }];
+  const rows = [{ phone: '01012345678' }];
   assert.ok(s.findExistingSubmission(rows, '010-1234-5678'));
   assert.equal(s.findExistingSubmission(rows, '010-1234-0000'), null);
 });

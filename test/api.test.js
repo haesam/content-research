@@ -4,8 +4,8 @@ const { createFakeSheets, installFakeSheets } = require('../scripts/fake-sheets'
 const rate = require('../lib/ratelimit');
 
 let fake;
-function freshHandlers() {
-  fake = installFakeSheets(createFakeSheets());
+function freshHandlers(seed) {
+  fake = installFakeSheets(createFakeSheets(seed));
   for (const m of ['../api/survey/submit', '../api/survey/setup']) {
     delete require.cache[require.resolve(m)];
   }
@@ -33,6 +33,12 @@ const fullSurvey = {
   effortAndLimit: 'c', communityExpectation: 'd', futureCommitment: 'e',
 };
 
+const EXPECTED_ROOMS = [
+  { name: '콘텐츠 챌린지 단톡방', link: 'https://open.kakao.com/o/guCDOQLi', password: '2631' },
+  { name: '제작 챌린지 단톡방', link: 'https://open.kakao.com/o/gpPEPQLi', password: '2631' },
+  { name: '영업 챌린지 단톡방', link: 'https://open.kakao.com/o/gV49PQLi', password: '2631' },
+];
+
 test.beforeEach(() => rate.reset());
 
 test('submit: rejects non-POST and validation errors', async () => {
@@ -51,38 +57,52 @@ test('submit: rejects non-POST and validation errors', async () => {
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 
-test('submit: appends row and returns cohort link', async () => {
+test('submit: appends row and returns the three rooms with password', async () => {
   const h = freshHandlers();
   const res = mockRes();
   await h.submit(mockReq({ body: { ...fullSurvey, phone: '01012345678' } }), res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { ok: true, alreadySubmitted: false, kakaoLink: 'https://open.kakao.com/o/fake-3gi' });
+  assert.deepEqual(res.body, { ok: true, alreadySubmitted: false, rooms: EXPECTED_ROOMS });
   assert.equal(fake.state.submissions.length, 1);
   const row = fake.state.submissions[0];
   assert.equal(row[1], '3기');
   assert.equal(row[2], '홍길동');
   assert.equal(row[4], '010-1234-5678', 'phone stored in normalized form');
-  assert.equal(row[row.length - 1], 'https://open.kakao.com/o/fake-3gi');
+  assert.equal(row[row.length - 1], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
 });
 
-test('submit: duplicate phone returns existing link without appending', async () => {
+test('submit: duplicate phone returns rooms without appending', async () => {
   const h = freshHandlers();
   let res = mockRes();
   await h.submit(mockReq({ body: fullSurvey }), res);
   res = mockRes();
   await h.submit(mockReq({ body: { ...fullSurvey, name: '홍길동2', phone: '010 1234 5678' } }), res);
   assert.equal(res.body.alreadySubmitted, true);
-  assert.equal(res.body.kakaoLink, 'https://open.kakao.com/o/fake-3gi');
+  assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
   assert.equal(fake.state.submissions.length, 1);
 });
 
-test('submit: cohort without link → null link, row still saved', async () => {
+test('submit: empty sheet tab → built-in default rooms; all inactive → no rooms', async () => {
+  let h = freshHandlers({ rooms: [] });
+  let res = mockRes();
+  await h.submit(mockReq({ body: fullSurvey }), res);
+  assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
+
+  h = freshHandlers({ rooms: [{ name: '콘텐츠', link: 'https://a', password: '1', active: false }] });
+  res = mockRes();
+  await h.submit(mockReq({ body: fullSurvey }), res);
+  assert.deepEqual(res.body.rooms, []);
+  assert.equal(fake.state.submissions[0][fake.state.submissions[0].length - 1], '');
+});
+
+test('submit: sheet read failure for rooms falls back to defaults, submission still saved', async () => {
   const h = freshHandlers();
+  fake.readChallengeRooms = async () => { throw new Error('boom'); };
   const res = mockRes();
-  await h.submit(mockReq({ body: { ...fullSurvey, cohort: '5기', phone: '010-9999-1111' } }), res);
+  await h.submit(mockReq({ body: fullSurvey }), res);
   assert.equal(res.statusCode, 200);
-  assert.equal(res.body.kakaoLink, null);
-  assert.equal(fake.state.submissions[0][1], '5기');
+  assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
+  assert.equal(fake.state.submissions.length, 1);
 });
 
 test('submit: rate limited after 8 attempts from one ip', async () => {

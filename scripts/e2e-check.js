@@ -74,8 +74,12 @@ async function main() {
 
   await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
-  const href = await page.getAttribute('#kakaoBtn', 'href');
-  if (href !== 'https://open.kakao.com/o/fake-3gi') throw new Error('kakao link wrong: ' + href);
+  const roomLinks = await page.$$eval('#roomList a', (as) => as.map((a) => [a.textContent.trim(), a.getAttribute('href'), a.getAttribute('target')]));
+  if (roomLinks.length !== 3) throw new Error('expected 3 rooms, got ' + roomLinks.length);
+  if (roomLinks[0][0] !== '콘텐츠 챌린지 단톡방 입장하기' || roomLinks[0][1] !== 'https://open.kakao.com/o/guCDOQLi' || roomLinks[0][2] !== '_blank') throw new Error('room 1 wrong: ' + JSON.stringify(roomLinks[0]));
+  if (roomLinks[2][1] !== 'https://open.kakao.com/o/gV49PQLi') throw new Error('room 3 wrong');
+  if (!(await page.isVisible('#passBox')) || (await page.textContent('#passCode')) !== '2631') throw new Error('password box wrong');
+  if (!(await page.isVisible('#pickHint'))) throw new Error('pick hint missing');
   if (!(await page.textContent('#doneTitle')).includes('홍길동')) throw new Error('name missing on done');
   if (await page.evaluate(() => localStorage.getItem('nadaun_survey_draft_v2'))) throw new Error('draft should be cleared after submit');
   await page.screenshot({ path: path.join(SHOTS, '05-done.png') });
@@ -93,9 +97,11 @@ async function main() {
   await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   if (!(await page.textContent('#doneTitle')).includes('다시 오셨군요')) throw new Error('returning copy missing');
+  if ((await page.$$('#roomList a')).length !== 3) throw new Error('returning citizen should see rooms');
   await page.screenshot({ path: path.join(SHOTS, '06-returning.png') });
 
-  // 링크 미등록 기수 → 안내 박스
+  // 방 목록이 비어 있을 때(전부 비활성) → 안내 박스
+  await page.route('**/api/survey/submit', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, alreadySubmitted: false, rooms: [] }) }));
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
   await page.fill('#fName', '김영희'); await page.fill('#fPhone', '010-9999-1111'); await page.fill('#fCohort', '5기');
@@ -108,8 +114,10 @@ async function main() {
   await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   if (!(await page.isVisible('#noLinkBox'))) throw new Error('no-link box should show');
-  if (await page.isVisible('#kakaoBtn')) throw new Error('kakao button should be hidden');
-  await page.screenshot({ path: path.join(SHOTS, '07-done-nolink.png') });
+  if (await page.isVisible('#passBox')) throw new Error('password box should be hidden');
+  if ((await page.$$('#roomList a')).length !== 0) throw new Error('no room buttons expected');
+  await page.screenshot({ path: path.join(SHOTS, '07-done-norooms.png') });
+  await page.unroute('**/api/survey/submit');
 
   // 데스크톱 폭에서 한 장
   const desk = await browser.newPage({ viewport: { width: 1280, height: 900 } });

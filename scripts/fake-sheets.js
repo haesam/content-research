@@ -1,14 +1,12 @@
 // 로컬 개발/테스트용 가짜 구글시트. lib/sheets.js와 같은 함수 이름을 제공한다.
 // 실제 구글 API를 호출하지 않으며, 메모리 안에서만 동작한다.
 
-const { SURVEY_COLUMNS } = require('../lib/survey');
+const { SURVEY_COLUMNS, DEFAULT_ROOMS } = require('../lib/survey');
 
 function createFakeSheets(seed = {}) {
   const state = {
-    links: seed.links || [
-      { cohort: '3기', link: 'https://open.kakao.com/o/fake-3gi', active: true },
-      { cohort: '전체', link: '', active: true }, // 기본 링크 미입력 상태
-    ],
+    // 기본값: 시트 양식 초기화 직후와 같은 상태 (내장 3개 방). seed.rooms 로 바꿀 수 있다.
+    rooms: seed.rooms || DEFAULT_ROOMS.map((r) => ({ ...r })),
     submissions: seed.submissions || [],
     setupCalls: [],
   };
@@ -17,13 +15,12 @@ function createFakeSheets(seed = {}) {
 
   return {
     state,
-    async readChallengeLinks() { return state.links.map((l) => ({ ...l })); },
+    async readChallengeRooms() { return state.rooms.map((r) => ({ ...r })); },
     async readSurveySubmissions() {
       return state.submissions.map((row) => ({
         cohort: row[idx('cohort')] || '',
         name: row[idx('name')] || '',
         phone: row[idx('phone')] || '',
-        kakaoLink: row[idx('kakaoLink')] || '',
       }));
     },
     async appendSurveyResponse(row) { state.submissions.push(row.slice()); },
