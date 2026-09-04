@@ -71,7 +71,11 @@
   .cta{background:linear-gradient(180deg,#281B42,#1C1533);text-align:center;color:#FFF2E4}
   .cta h2{font-size:clamp(26px,4.5vw,44px);font-weight:800;line-height:1.45;text-shadow:0 0 28px rgba(255,190,130,.3)}
   .cta p{margin-top:20px;font-size:clamp(14.5px,1.9vw,17px);line-height:1.9;color:rgba(230,214,240,.85)}
-  .cta a{display:inline-block;margin-top:40px;padding:17px 46px;background:linear-gradient(90deg,#FFD9A0,#FF9E8A);color:#2A1A2E;font-weight:800;font-size:16px;border-radius:999px;text-decoration:none;box-shadow:0 10px 34px rgba(255,190,130,.3);transition:transform .18s ease,box-shadow .18s ease}
+  .cta .notice{max-width:560px;margin:34px auto 0;padding:16px 22px;border-radius:12px;background:rgba(255,217,160,.08);border:1px solid rgba(255,200,150,.3)}
+  .cta .notice p{margin:0;font-size:14px;line-height:1.8;color:rgba(240,228,255,.85)}
+  .cta .notice p+p{margin-top:4px}
+  .cta .notice strong{color:#FFC98A;font-weight:700}
+  .cta a{display:inline-block;margin-top:28px;padding:17px 46px;background:linear-gradient(90deg,#FFD9A0,#FF9E8A);color:#2A1A2E;font-weight:800;font-size:16px;border-radius:999px;text-decoration:none;box-shadow:0 10px 34px rgba(255,190,130,.3);transition:transform .18s ease,box-shadow .18s ease}
   .cta a:hover{transform:translateY(-3px);box-shadow:0 16px 44px rgba(255,190,130,.4)}
 
   /* ============ 시민 확인 · 설문 · 완료 ============ */
@@ -179,6 +183,10 @@
   <div class="inner">
     <h2>당신의 자리는<br>이미 이 도시에 있습니다</h2>
     <p>나다운타운 시민이라면 잠깐의 확인만으로<br>바로 들어오실 수 있어요.</p>
+    <div class="notice">
+      <p>이곳은 기존 나다운타운 시민 및 AI 홈페이지 프로젝트 수강생을 위한 전용 공간입니다.</p>
+      <p><strong>이 페이지 링크는 절대 공유 금지입니다. 꼭 본인만 확인해주세요.</strong></p>
+    </div>
     <a href="#citizen">시민 입장하기</a>
   </div>
 </section>
