@@ -322,7 +322,7 @@
         </div>
         <p class="pick" id="pickHint" hidden>원하는 챌린지를 골라 입장해주세요. 여러 방에 들어가도 괜찮아요.</p>
         <div class="rooms" id="roomList"></div>
-        <div class="linkbox" id="noLinkBox" hidden>챌린지 단톡방 링크는 준비되는 대로 안내드릴게요.<br>전달받으신 카카오톡을 확인해주세요.<br><small>링크가 준비되면 이 페이지에서 성함과 연락처만 다시 제출해도 바로 볼 수 있어요.</small></div>
+        <div class="linkbox" id="noLinkBox" hidden>챌린지 단톡방 링크는 준비되는 대로 안내드릴게요.<br>연기우 카카오톡을 확인해주세요.<br><small>링크가 준비되면 이 페이지에서 성함과 연락처만 다시 제출해도 바로 볼 수 있어요.</small></div>
         <p class="note" id="doneNote"></p>
       </div>
 
@@ -497,7 +497,7 @@
       });
       pickHint.hidden = rooms.length < 2;
       box.hidden = true;
-      note.textContent = '카카오톡에서 암호를 물어보면 위 암호를 입력해주세요. 링크가 열리지 않으면 전달받으신 카카오톡으로 문의해주세요.';
+      note.textContent = '카카오톡에서 암호를 물어보면 위 암호를 입력해주세요. 링크가 열리지 않으면 연기우 카카오톡으로 문의해주세요.';
     } else {
       passBox.hidden = true; pickHint.hidden = true; box.hidden = false; note.textContent = '';
     }
