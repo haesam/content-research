@@ -105,6 +105,43 @@ test('submit: sheet read failure for rooms falls back to defaults, submission st
   assert.equal(fake.state.submissions.length, 1);
 });
 
+test('submit: missing tab → auto setup then save; permission error → SHEET_NOT_READY', async () => {
+  let h = freshHandlers();
+  const realRead = fake.readSurveySubmissions;
+  fake.readSurveySubmissions = async () => {
+    if (!fake.state.tabsReady) throw new Error("Unable to parse range: '설문응답'!A2:P");
+    return realRead();
+  };
+  let res = mockRes();
+  await h.submit(mockReq({ body: fullSurvey }), res);
+  assert.equal(res.statusCode, 200);
+  assert.deepEqual(fake.state.setupCalls, ['survey'], 'setup should run once automatically');
+  assert.equal(fake.state.submissions.length, 1);
+
+  h = freshHandlers();
+  fake.readSurveySubmissions = async () => { throw new Error('The caller does not have permission'); };
+  res = mockRes();
+  await h.submit(mockReq({ body: fullSurvey }), res);
+  assert.equal(res.statusCode, 500);
+  assert.equal(res.body.error, 'SHEET_NOT_READY');
+  assert.equal(fake.state.submissions.length, 0);
+});
+
+test('health: guarded by SETUP_SECRET and returns the report', async () => {
+  freshHandlers();
+  delete require.cache[require.resolve('../api/survey/health')];
+  const health = require('../api/survey/health');
+  process.env.SETUP_SECRET = 'abc';
+  let res = mockRes();
+  await health(mockReq({ method: 'GET', url: '/api/survey/health?key=nope' }), res);
+  assert.equal(res.statusCode, 401);
+  res = mockRes();
+  await health(mockReq({ method: 'GET', url: '/api/survey/health?key=abc' }), res);
+  assert.equal(res.statusCode, 200);
+  assert.equal(res.body.ok, true);
+  delete process.env.SETUP_SECRET;
+});
+
 test('submit: rate limited after 8 attempts from one ip', async () => {
   const h = freshHandlers();
   const headers = { 'x-forwarded-for': '198.51.100.7' };

@@ -2,8 +2,9 @@
 // 요청: { name, nickname, cohort, phone, ageGroup, gender, region, major, promoLink,
 //         educationHelp, currentConcern, effortAndLimit, communityExpectation, futureCommitment }
 // 응답: { ok:true, alreadySubmitted, rooms: [{ name, link, password }] }
-//       { ok:false, error: 'VALIDATION'|'RATE_LIMITED'|'SERVER_ERROR', fields? }
+//       { ok:false, error: 'VALIDATION'|'RATE_LIMITED'|'SHEET_NOT_READY'|'SERVER_ERROR', fields? }
 // 같은 연락처로 이미 제출한 경우 새 행을 추가하지 않고 단톡방 목록만 다시 돌려준다.
+// 시트에 탭이 아직 없으면(초기화 전) 자동으로 탭·헤더를 만들고 이어서 저장한다.
 
 const sheets = require('../../lib/sheets');
 const { validateSurvey, buildSurveyRow, activeRooms, findExistingSubmission, DEFAULT_ROOMS } = require('../../lib/survey');
@@ -20,6 +21,28 @@ async function loadRooms() {
     logError('survey/submit:rooms', err);
   }
   return activeRooms(DEFAULT_ROOMS);
+}
+
+// 탭이 없어서 나는 오류인지 (구글 API: "Unable to parse range: '설문응답'!A2:P")
+function isMissingTab(err) {
+  return /unable to parse range|range.*not found/i.test(err && err.message ? err.message : '');
+}
+// 공유/인증 문제인지
+function isAccessProblem(err) {
+  const m = err && err.message ? err.message : '';
+  return /permission|forbidden|403|not found|404|GOOGLE_SERVICE_ACCOUNT_KEY|invalid_grant|unauthorized/i.test(m);
+}
+
+// 설문응답 탭 읽기. 탭이 없으면 한 번 자동 초기화하고 다시 읽는다.
+async function readSubmissionsWithSetup() {
+  try {
+    return await sheets.readSurveySubmissions();
+  } catch (err) {
+    if (!isMissingTab(err)) throw err;
+    logError('survey/submit', new Error('설문응답 탭이 없어 자동 초기화합니다'));
+    await sheets.setupSurveySheet();
+    return sheets.readSurveySubmissions();
+  }
 }
 
 module.exports = async function handler(req, res) {
@@ -42,7 +65,7 @@ module.exports = async function handler(req, res) {
   }
 
   try {
-    const submitted = await sheets.readSurveySubmissions();
+    const submitted = await readSubmissionsWithSetup();
     const prior = findExistingSubmission(submitted, v.values.phone);
     const rooms = await loadRooms();
 
@@ -56,6 +79,8 @@ module.exports = async function handler(req, res) {
     return res.status(200).json({ ok: true, alreadySubmitted: false, rooms });
   } catch (err) {
     logError('survey/submit', err);
-    return res.status(500).json({ ok: false, error: 'SERVER_ERROR' });
+    // 운영자가 원인을 알 수 있도록 코드만 구분해서 돌려준다 (자세한 내용은 Vercel 로그와 /api/survey/health)
+    const code = isAccessProblem(err) ? 'SHEET_NOT_READY' : 'SERVER_ERROR';
+    return res.status(500).json({ ok: false, error: code });
   }
 };

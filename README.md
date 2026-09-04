@@ -1,4 +1,4 @@
-# content-research
+# nad-challenge (나다운타운 챌린지)
 
 이 저장소에는 두 가지가 들어 있습니다.
 
@@ -13,6 +13,7 @@
 public/index.html            ← 나다운타운 페이지 (3D 히어로 + 설문 4단계 + 완료 화면)
 api/survey/submit.js         ← POST 설문 제출 (시트 저장 → 단톡 링크 반환)
 api/survey/setup.js          ← GET  최초 1회 시트 양식(탭·헤더) 생성 (SETUP_SECRET 필요)
+api/survey/health.js         ← GET  배포 진단: 환경변수·시트 권한·탭 점검 + 해결 방법 (SETUP_SECRET 필요)
 api/cron/fetch-youtube.js    ← 유튜브 크론
 lib/sheets.js                ← 구글시트 읽기/쓰기 (두 기능 공용)
 lib/survey.js                ← 검증·행 조립·링크 선택 (순수 로직)
@@ -130,6 +131,13 @@ https://<프로젝트이름>.vercel.app/api/cron/fetch-youtube
 
 ## 문제가 생기면
 
+가장 먼저 진단 페이지를 열어보세요. 무엇이 막혔는지와 해결 방법을 그대로 보여줍니다.
+
+```
+https://<프로젝트이름>.vercel.app/api/survey/health?key=<SETUP_SECRET>
+```
+
+- 제출 시 `잠시 문제가 생겼어요` / `아직 접수 준비가 끝나지 않았어요` → 대부분 (1) 시트에 서비스 계정이 편집자로 공유되지 않았거나 (2) `GOOGLE_SERVICE_ACCOUNT_KEY`가 비어 있는 경우. 진단 페이지의 `fix` 항목대로 처리
 - `SETUP_SECRET 환경변수를 먼저 설정하세요` → Vercel 환경변수 추가 후 재배포
 - setup 응답에 `편집자로 공유되어 있는지 확인` → 시트에 서비스 계정 이메일을 편집자로 공유
 - 제출이 계속 실패(잠시 문제가 생겼어요) → 시트 탭 이름이 `설문응답`, `챌린지링크`인지, 서비스 계정 권한이 편집자인지 확인

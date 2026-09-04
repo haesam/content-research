@@ -24,7 +24,8 @@ function createFakeSheets(seed = {}) {
       }));
     },
     async appendSurveyResponse(row) { state.submissions.push(row.slice()); },
-    async setupSurveySheet() { state.setupCalls.push('survey'); return { spreadsheetId: 'fake-survey', created: ['설문응답', '챌린지링크'], renamed: [], headersWritten: ['설문응답', '챌린지링크'], untouched: [] }; },
+    async setupSurveySheet() { state.setupCalls.push('survey'); state.tabsReady = true; return { spreadsheetId: 'fake-survey', created: ['설문응답', '챌린지링크'], renamed: [], headersWritten: ['설문응답', '챌린지링크'], untouched: [] }; },
+    async checkSurveySheet() { return { ok: true, spreadsheetId: 'fake-survey', checks: [{ name: '가짜 시트', ok: true, detail: '로컬 모드' }], fix: [] }; },
     // 기존 파이프라인 함수(사용 안 함)
     async readConfigKeywords() { return []; },
     async appendContentRows() {},
