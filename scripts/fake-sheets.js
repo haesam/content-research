@@ -5,12 +5,6 @@ const { SURVEY_COLUMNS } = require('../lib/survey');
 
 function createFakeSheets(seed = {}) {
   const state = {
-    roster: seed.roster || [
-      { name: '홍길동', phone: '010-1234-5678', cohort: '3기' },
-      { name: '김영희', phone: '010-9999-1111', cohort: '' },
-      { name: '박철수', phone: '010-1111-2222', cohort: '2기' },
-      { name: '박철수', phone: '010-3333-2222', cohort: '2기' }, // 동명이인 + 뒷자리 동일 → AMBIGUOUS
-    ],
     links: seed.links || [
       { cohort: '3기', link: 'https://open.kakao.com/o/fake-3gi', active: true },
       { cohort: '전체', link: '', active: true }, // 기본 링크 미입력 상태
@@ -23,7 +17,6 @@ function createFakeSheets(seed = {}) {
 
   return {
     state,
-    async readRoster() { return state.roster.map((r) => ({ ...r })); },
     async readChallengeLinks() { return state.links.map((l) => ({ ...l })); },
     async readSurveySubmissions() {
       return state.submissions.map((row) => ({
@@ -34,8 +27,7 @@ function createFakeSheets(seed = {}) {
       }));
     },
     async appendSurveyResponse(row) { state.submissions.push(row.slice()); },
-    async setupRosterSheet() { state.setupCalls.push('roster'); return { spreadsheetId: 'fake-roster', created: ['수강생명단', '챌린지링크'], renamed: [], headersWritten: ['수강생명단', '챌린지링크'], untouched: [] }; },
-    async setupSurveySheet() { state.setupCalls.push('survey'); return { spreadsheetId: 'fake-survey', created: ['설문응답'], renamed: [], headersWritten: ['설문응답'], untouched: [] }; },
+    async setupSurveySheet() { state.setupCalls.push('survey'); return { spreadsheetId: 'fake-survey', created: ['설문응답', '챌린지링크'], renamed: [], headersWritten: ['설문응답', '챌린지링크'], untouched: [] }; },
     // 기존 파이프라인 함수(사용 안 함)
     async readConfigKeywords() { return []; },
     async appendContentRows() {},

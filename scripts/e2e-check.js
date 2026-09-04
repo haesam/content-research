@@ -20,43 +20,40 @@ async function main() {
 
   await page.goto(BASE + '/', { waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off', { timeout: 5000 });
+  if ((await page.evaluate(() => scrollY)) !== 0) throw new Error('page should not auto-scroll on load');
 
-  // CTA → 시민 확인
+  // CTA → 설문 1단계
   await page.click('.cta a');
   await page.waitForTimeout(400);
-  await page.screenshot({ path: path.join(SHOTS, '01-verify.png'), fullPage: false });
+  if (!(await page.isVisible('.step[data-step="1"]'))) throw new Error('step1 not visible');
+  await page.screenshot({ path: path.join(SHOTS, '01-step1.png') });
 
-  // 틀린 정보
-  await page.fill('#vName', '홍길동');
-  await page.fill('#vPhone', '0000');
-  await page.click('#verifyBtn');
-  await page.waitForSelector('#verifyAlert:not([hidden])');
-  const alertText = await page.textContent('#verifyAlert');
-  if (!alertText.includes('시민 명단에서 확인되지 않았어요')) throw new Error('unexpected alert: ' + alertText);
-  await page.screenshot({ path: path.join(SHOTS, '02-verify-fail.png') });
+  // 빈칸 + 잘못된 연락처 검증
+  await page.fill('#fName', '홍길동');
+  await page.fill('#fPhone', '1234');
+  await page.click('#nextBtn');
+  if (!(await page.isVisible('.step[data-step="1"]'))) throw new Error('should stay on step1');
+  const invalid1 = await page.locator('.step[data-step="1"] .field.invalid').count();
+  if (invalid1 < 2) throw new Error('step1 validation did not flag phone/cohort: ' + invalid1);
+  await page.screenshot({ path: path.join(SHOTS, '02-step1-invalid.png') });
 
-  // 맞는 정보 → 설문
-  await page.fill('#vPhone', '5678');
-  await page.click('#verifyBtn');
-  await page.waitForSelector('[data-stage="survey"]:not([hidden])');
-  if ((await page.inputValue('#fCohort')) !== '3기') throw new Error('cohort not prefilled');
-  if (!(await page.$eval('#fCohort', (el) => el.readOnly))) throw new Error('cohort should be locked');
-  if (!(await page.textContent('#chipPhone')).includes('010-****-5678')) throw new Error('masked phone missing');
-  await page.screenshot({ path: path.join(SHOTS, '03-step1.png') });
-
-  // step1 → step2 (빈칸 검증)
+  // 연락처 자동 하이픈
+  await page.fill('#fPhone', '');
+  await page.type('#fPhone', '01012345678');
+  if ((await page.inputValue('#fPhone')) !== '010-1234-5678') throw new Error('phone not auto-formatted: ' + await page.inputValue('#fPhone'));
+  await page.fill('#fCohort', '3기');
   await page.click('#nextBtn');
   await page.waitForSelector('.step[data-step="2"]:not([hidden])');
-  await page.click('#nextBtn');
-  const invalidCount = await page.locator('.step[data-step="2"] .field.invalid').count();
-  if (invalidCount < 4) throw new Error('step2 validation did not flag empty fields: ' + invalidCount);
-  await page.screenshot({ path: path.join(SHOTS, '04-step2-invalid.png') });
 
+  await page.click('#nextBtn');
+  const invalid2 = await page.locator('.step[data-step="2"] .field.invalid').count();
+  if (invalid2 < 4) throw new Error('step2 validation did not flag empty fields: ' + invalid2);
   await page.fill('#fAge', '40대 후반');
   await page.selectOption('#fGender', '여성');
   await page.fill('#fRegion', '서울 마포');
   await page.fill('#fMajor', '시각디자인');
   await page.fill('#fPromo', 'https://instagram.com/me\nme@example.com');
+  await page.screenshot({ path: path.join(SHOTS, '03-step2.png') });
   await page.click('#nextBtn');
   await page.waitForSelector('.step[data-step="3"]:not([hidden])');
   await page.fill('#fHelp', '도움된 점');
@@ -66,40 +63,42 @@ async function main() {
   await page.waitForSelector('.step[data-step="4"]:not([hidden])');
   await page.fill('#fExpect', '바라는 점');
   await page.fill('#fCommit', '다짐');
-  await page.screenshot({ path: path.join(SHOTS, '05-step4.png') });
+  await page.screenshot({ path: path.join(SHOTS, '04-step4.png') });
 
-  // 임시저장 확인: 새로고침 후 다시 인증하면 값이 남아 있어야 한다
-  const draft = await page.evaluate(() => localStorage.getItem('nadaun_citizen_draft_v1'));
-  if (!draft || !draft.includes('다짐')) throw new Error('draft not saved');
+  // 임시저장: 새로고침해도 값이 남아 있어야 한다
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#loader.off');
+  if ((await page.inputValue('#fName')) !== '홍길동') throw new Error('draft not restored');
+  for (let i = 0; i < 3; i++) await page.click('#nextBtn');
+  await page.waitForSelector('.step[data-step="4"]:not([hidden])');
 
   await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   const href = await page.getAttribute('#kakaoBtn', 'href');
   if (href !== 'https://open.kakao.com/o/fake-3gi') throw new Error('kakao link wrong: ' + href);
   if (!(await page.textContent('#doneTitle')).includes('홍길동')) throw new Error('name missing on done');
-  const draftAfter = await page.evaluate(() => localStorage.getItem('nadaun_citizen_draft_v1'));
-  if (draftAfter) throw new Error('draft should be cleared after submit');
-  await page.screenshot({ path: path.join(SHOTS, '06-done.png') });
+  if (await page.evaluate(() => localStorage.getItem('nadaun_survey_draft_v2'))) throw new Error('draft should be cleared after submit');
+  await page.screenshot({ path: path.join(SHOTS, '05-done.png') });
 
-  // 재방문: 이미 제출 → 바로 링크
+  // 같은 연락처로 재제출 → 이미 제출, 바로 링크
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
-  await page.fill('#vName', '홍길동');
-  await page.fill('#vPhone', '5678');
-  await page.click('#verifyBtn');
+  await page.fill('#fName', '홍길동'); await page.fill('#fPhone', '010-1234-5678'); await page.fill('#fCohort', '3기');
+  await page.click('#nextBtn');
+  await page.fill('#fAge', '29'); await page.selectOption('#fGender', '여성'); await page.fill('#fRegion', '서울'); await page.fill('#fMajor', '경영'); await page.fill('#fPromo', 'https://x');
+  await page.click('#nextBtn');
+  await page.fill('#fHelp', 'a'); await page.fill('#fConcern', 'b'); await page.fill('#fEffort', 'c');
+  await page.click('#nextBtn');
+  await page.fill('#fExpect', 'd'); await page.fill('#fCommit', 'e');
+  await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
-  if (!(await page.textContent('#doneTitle')).includes('다시 오셨군요')) throw new Error('returning citizen copy missing');
-  await page.screenshot({ path: path.join(SHOTS, '07-returning.png') });
+  if (!(await page.textContent('#doneTitle')).includes('다시 오셨군요')) throw new Error('returning copy missing');
+  await page.screenshot({ path: path.join(SHOTS, '06-returning.png') });
 
-  // 기수 없는 시민 + 링크 미등록 → 안내 박스
+  // 링크 미등록 기수 → 안내 박스
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
-  await page.fill('#vName', '김영희');
-  await page.fill('#vPhone', '1111');
-  await page.click('#verifyBtn');
-  await page.waitForSelector('[data-stage="survey"]:not([hidden])');
-  if (await page.$eval('#fCohort', (el) => el.readOnly)) throw new Error('cohort should be editable');
-  await page.fill('#fCohort', '5기');
+  await page.fill('#fName', '김영희'); await page.fill('#fPhone', '010-9999-1111'); await page.fill('#fCohort', '5기');
   await page.click('#nextBtn');
   await page.fill('#fAge', '29'); await page.selectOption('#fGender', '남성'); await page.fill('#fRegion', '부산'); await page.fill('#fMajor', '경영'); await page.fill('#fPromo', 'https://x');
   await page.click('#nextBtn');
@@ -110,15 +109,15 @@ async function main() {
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   if (!(await page.isVisible('#noLinkBox'))) throw new Error('no-link box should show');
   if (await page.isVisible('#kakaoBtn')) throw new Error('kakao button should be hidden');
-  await page.screenshot({ path: path.join(SHOTS, '08-done-nolink.png') });
+  await page.screenshot({ path: path.join(SHOTS, '07-done-nolink.png') });
 
   // 데스크톱 폭에서 한 장
   const desk = await browser.newPage({ viewport: { width: 1280, height: 900 } });
   await desk.route('**/three.min.js', (r) => r.abort());
   await desk.goto(BASE + '/#citizen', { waitUntil: 'domcontentloaded' });
   await desk.waitForSelector('#loader.off');
-  await desk.waitForTimeout(500);
-  await desk.screenshot({ path: path.join(SHOTS, '09-desktop-verify.png') });
+  await desk.waitForTimeout(600);
+  await desk.screenshot({ path: path.join(SHOTS, '08-desktop.png') });
 
   await browser.close();
   if (errors.length) throw new Error('browser errors:\n' + errors.join('\n'));

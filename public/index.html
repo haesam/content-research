@@ -90,7 +90,6 @@
   .field select option{background:#1C1533;color:#FFF6EA}
   .field input::placeholder,.field textarea::placeholder{color:rgba(230,214,240,.35)}
   .field input:focus,.field select:focus,.field textarea:focus{border-color:#FFD9A0;box-shadow:0 0 0 3px rgba(255,217,160,.15)}
-  .field input[readonly]{color:rgba(255,246,234,.8);background:rgba(21,17,41,.4);border-style:dashed}
   .field textarea{min-height:124px;resize:vertical;line-height:1.7}
   .field .hint{font-size:12.5px;color:rgba(230,214,240,.55);margin-top:7px;line-height:1.6}
   .field.invalid input,.field.invalid select,.field.invalid textarea{border-color:#FF7E6B}
@@ -98,10 +97,6 @@
   .field.invalid .err{display:block}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
   @media (max-width:520px){.grid2{grid-template-columns:1fr}.card{padding:34px 22px}}
-  .chips{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:22px}
-  .chip{display:inline-flex;align-items:center;gap:8px;padding:9px 14px;border-radius:999px;background:rgba(255,217,160,.1);border:1px solid rgba(255,200,150,.3);font-size:13.5px;color:#FFE9CC}
-  .chip b{color:#FFC98A;font-weight:700}
-  .chip .ok{width:16px;height:16px;border-radius:50%;background:var(--teal);color:#0F2A26;font-size:11px;display:inline-flex;align-items:center;justify-content:center;font-weight:800}
   .btn{display:inline-flex;align-items:center;justify-content:center;width:100%;padding:16px 28px;border:0;border-radius:999px;background:linear-gradient(90deg,#FFD9A0,#FF9E8A);color:#2A1A2E;font-weight:800;font-size:16px;cursor:pointer;font-family:inherit;box-shadow:0 10px 34px rgba(255,190,130,.28);transition:transform .18s ease,box-shadow .18s ease,opacity .18s ease;text-decoration:none}
   .btn:hover{transform:translateY(-2px);box-shadow:0 16px 44px rgba(255,190,130,.38)}
   .btn[disabled]{opacity:.55;cursor:not-allowed;transform:none;box-shadow:none}
@@ -179,55 +174,44 @@
   </div>
 </section>
 
-<!-- ============ 시민 확인 → 설문 → 단톡 링크 ============ -->
+<!-- ============ 시민 입장: 설문 → 단톡 링크 ============ -->
 <section class="citizen" id="citizen">
   <div class="inner">
     <div class="card" id="citizenCard">
 
-      <!-- 0단계: 시민 확인 -->
-      <div class="stage" data-stage="verify">
-        <span class="eyebrow">CITIZEN CHECK · 시민 확인</span>
+      <!-- 설문 1~4단계 -->
+      <div class="stage" data-stage="survey">
+        <span class="eyebrow">CITIZEN ENTRY · 시민 입장</span>
         <h2>어서오세요,<br>나다운타운 <span class="accent">시민님</span></h2>
-        <p class="lead">이미 이 도시의 시민이신 당신,<br>성함과 연락처 뒷 4자리만 확인하면 바로 입장하실 수 있어요.</p>
-        <form id="verifyForm" novalidate>
-          <div class="field">
-            <label for="vName">성함</label>
-            <input id="vName" name="name" type="text" placeholder="홍길동" autocomplete="name" maxlength="30" required>
-            <p class="err">성함을 입력해주세요.</p>
-          </div>
-          <div class="field">
-            <label for="vPhone">연락처 뒷 4자리</label>
-            <input id="vPhone" name="phoneLast4" type="text" inputmode="numeric" pattern="[0-9]{4}" maxlength="4" placeholder="1234" autocomplete="off" required>
-            <p class="hint">예) 010-1234-5678 → 5678</p>
-            <p class="err">숫자 4자리를 입력해주세요.</p>
-          </div>
-          <button class="btn" type="submit" id="verifyBtn"><i class="spin"></i>시민 확인하고 입장하기</button>
-          <p class="note">입력하신 정보는 시민 확인 용도로만 사용됩니다.</p>
-          <div class="alert" id="verifyAlert" hidden></div>
-        </form>
-      </div>
-
-      <!-- 1~4단계: 설문 -->
-      <div class="stage" data-stage="survey" hidden>
+        <p class="lead">몇 가지만 남겨주시면<br>챌린지 단톡방으로 바로 안내해드릴게요.</p>
         <div class="progress"><span id="progressLabel">STEP 1 / 4</span><div class="bar"><i id="progressBar"></i></div></div>
         <form id="surveyForm" novalidate>
 
           <div class="step" data-step="1">
-            <h3 class="step-title">기본 정보를 확인할게요</h3>
-            <p class="step-desc">시민 확인이 끝난 정보는 그대로 두고, 나머지만 채워주세요.</p>
-            <div class="chips">
-              <span class="chip"><i class="ok">✓</i><b>성함</b> <span id="chipName"></span></span>
-              <span class="chip"><i class="ok">✓</i><b>연락처</b> <span id="chipPhone"></span></span>
+            <h3 class="step-title">기본 정보를 알려주세요</h3>
+            <p class="step-desc">단톡방 안내와 시민 확인에 쓰여요.</p>
+            <div class="grid2">
+              <div class="field">
+                <label for="fName">성함</label>
+                <input id="fName" name="name" type="text" maxlength="30" placeholder="홍길동" autocomplete="name" required>
+                <p class="err">성함을 입력해주세요.</p>
+              </div>
+              <div class="field">
+                <label for="fPhone">연락처</label>
+                <input id="fPhone" name="phone" type="tel" inputmode="numeric" maxlength="13" placeholder="010-1234-5678" autocomplete="tel" required>
+                <p class="err">연락처를 숫자 10~11자리로 입력해주세요.</p>
+              </div>
             </div>
-            <div class="field">
-              <label for="fNickname">닉네임 <span class="opt">(선택)</span></label>
-              <input id="fNickname" name="nickname" type="text" maxlength="50" placeholder="커뮤니티에서 쓰는 이름이 있다면">
-            </div>
-            <div class="field">
-              <label for="fCohort">기수</label>
-              <input id="fCohort" name="cohort" type="text" maxlength="30" placeholder="예) 3기" required>
-              <p class="hint" id="cohortHint" hidden>명단에 등록된 기수예요.</p>
-              <p class="err">기수를 입력해주세요.</p>
+            <div class="grid2">
+              <div class="field">
+                <label for="fNickname">닉네임 <span class="opt">(선택)</span></label>
+                <input id="fNickname" name="nickname" type="text" maxlength="50" placeholder="커뮤니티에서 쓰는 이름">
+              </div>
+              <div class="field">
+                <label for="fCohort">기수</label>
+                <input id="fCohort" name="cohort" type="text" maxlength="30" placeholder="예) 3기" required>
+                <p class="err">기수를 입력해주세요.</p>
+              </div>
             </div>
           </div>
 
@@ -312,7 +296,7 @@
             <button class="btn" type="button" id="nextBtn">다음</button>
             <button class="btn" type="submit" id="submitBtn" hidden><i class="spin"></i>제출하고 입장하기</button>
           </div>
-          <p class="note">작성 중인 내용은 이 기기에 임시 저장돼요. 새로고침해도 이어서 쓸 수 있어요.</p>
+          <p class="note">작성 중인 내용은 이 기기에 임시 저장돼요. 새로고침해도 이어서 쓸 수 있어요.<br>입력하신 정보는 커뮤니티 운영 목적으로만 사용됩니다.</p>
           <div class="alert" id="surveyAlert" hidden></div>
         </form>
       </div>
@@ -323,7 +307,7 @@
         <h2 id="doneTitle"></h2>
         <p class="lead" id="doneLead"></p>
         <a class="btn kakao" id="kakaoBtn" href="#" target="_blank" rel="noopener noreferrer" hidden>챌린지 단톡방 입장하기</a>
-        <div class="linkbox" id="noLinkBox" hidden>챌린지 단톡방 링크는 준비되는 대로 안내드릴게요.<br>전달받으신 카카오톡을 확인해주세요.<br><small>링크가 준비되면 이 페이지에서 시민 확인만 다시 하면 바로 볼 수 있어요.</small></div>
+        <div class="linkbox" id="noLinkBox" hidden>챌린지 단톡방 링크는 준비되는 대로 안내드릴게요.<br>전달받으신 카카오톡을 확인해주세요.<br><small>링크가 준비되면 이 페이지에서 성함과 연락처만 다시 제출해도 바로 볼 수 있어요.</small></div>
         <p class="note" id="doneNote"></p>
       </div>
 
@@ -334,40 +318,46 @@
 <footer>삶과 일을 나답게 — 나다운타운 © 2026</footer>
 
 <script>
-/* ============ 시민 확인 · 설문 · 완료 흐름 ============ */
+/* ============ 시민 입장: 설문 · 완료 흐름 ============ */
 (function(){
-  const API = { verify: '/api/survey/verify', submit: '/api/survey/submit' };
-  const DRAFT_KEY = 'nadaun_citizen_draft_v1';
+  const API = { submit: '/api/survey/submit' };
+  const DRAFT_KEY = 'nadaun_survey_draft_v2';
   const TOTAL_STEPS = 4;
-  const state = { name:'', phoneLast4:'', cohort:'', cohortLocked:false, phoneMasked:'', step:1 };
+  const state = { step: 1 };
 
   const $ = (s, r) => (r||document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r||document).querySelectorAll(s));
   const card = $('#citizenCard');
-  const stages = { verify: $('[data-stage="verify"]'), survey: $('[data-stage="survey"]'), done: $('[data-stage="done"]') };
+  const stages = { survey: $('[data-stage="survey"]'), done: $('[data-stage="done"]') };
 
   const MSG = {
-    NOT_FOUND: '시민 명단에서 확인되지 않았어요.\n성함과 연락처를 다시 확인해주세요.\n계속 확인되지 않는다면 전달받으신 카카오톡으로 문의해주세요.',
-    AMBIGUOUS: '같은 정보로 등록된 시민이 두 명 이상이에요.\n전달받으신 카카오톡으로 문의해주세요.',
-    RATE_LIMITED: '확인 시도가 너무 많아요.\n잠시 후 다시 시도해주세요.',
-    INVALID_INPUT: '성함과 연락처 뒷 4자리를 정확히 입력해주세요.',
+    RATE_LIMITED: '제출 시도가 너무 많아요.\n잠시 후 다시 시도해주세요.',
     VALIDATION: '아직 채우지 않은 항목이 있어요. 표시된 항목을 확인해주세요.',
     NETWORK: '잠시 연결이 원활하지 않아요.\n잠시 후 다시 시도해주세요.',
     SERVER_ERROR: '잠시 문제가 생겼어요.\n잠시 후 다시 시도해주세요.',
   };
 
+  function scrollToCard(){ card.scrollIntoView({ behavior:'smooth', block:'start' }); }
   function showStage(name){
     Object.keys(stages).forEach(k => { stages[k].hidden = (k !== name); });
-    card.scrollIntoView({ behavior:'smooth', block:'start' });
+    scrollToCard();
   }
   function setAlert(el, msg){ if(!msg){ el.hidden = true; el.textContent=''; } else { el.textContent = msg; el.hidden = false; } }
   function setBusy(btn, busy){ btn.disabled = !!busy; btn.classList.toggle('busy', !!busy); }
   function markInvalid(input, bad){ const f = input.closest('.field'); if(f) f.classList.toggle('invalid', !!bad); }
+  function digits(s){ return String(s||'').replace(/\D/g,''); }
+  function formatPhone(s){
+    const d = digits(s).slice(0, 11);
+    if(d.length <= 3) return d;
+    if(d.length <= 7) return d.slice(0,3) + '-' + d.slice(3);
+    if(d.length <= 10) return d.slice(0,3) + '-' + d.slice(3,6) + '-' + d.slice(6);
+    return d.slice(0,3) + '-' + d.slice(3,7) + '-' + d.slice(7);
+  }
   function validateInput(input){
     const v = (input.value || '').trim();
     let bad = false;
     if(input.required && !v) bad = true;
-    if(!bad && input.pattern && v && !(new RegExp('^(?:' + input.pattern + ')$')).test(v)) bad = true;
+    if(!bad && input.name === 'phone' && v && !/^0\d{9,10}$/.test(digits(v))) bad = true;
     markInvalid(input, bad);
     return !bad;
   }
@@ -378,55 +368,22 @@
     } catch (_) { return { ok:false, error:'NETWORK' }; }
     let data = null;
     try { data = await res.json(); } catch (_) {}
-    if(!data || typeof data !== 'object') return { ok:false, error: res.ok ? 'SERVER_ERROR' : 'SERVER_ERROR' };
+    if(!data || typeof data !== 'object') return { ok:false, error:'SERVER_ERROR' };
     return data;
   }
+  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 
-  /* ---------- 0단계: 시민 확인 ---------- */
-  const verifyForm = $('#verifyForm');
-  const vName = $('#vName'), vPhone = $('#vPhone'), verifyBtn = $('#verifyBtn'), verifyAlert = $('#verifyAlert');
-  vPhone.addEventListener('input', () => { vPhone.value = vPhone.value.replace(/\D/g,'').slice(0,4); });
-  [vName, vPhone].forEach(i => i.addEventListener('input', () => { markInvalid(i, false); setAlert(verifyAlert, ''); }));
-
-  verifyForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const okName = validateInput(vName), okPhone = validateInput(vPhone);
-    if(!okName || !okPhone) return;
-    setAlert(verifyAlert, '');
-    setBusy(verifyBtn, true);
-    const data = await postJson(API.verify, { name: vName.value.trim(), phoneLast4: vPhone.value.trim() });
-    setBusy(verifyBtn, false);
-    if(!data.ok){ setAlert(verifyAlert, MSG[data.error] || MSG.SERVER_ERROR); return; }
-
-    state.name = vName.value.trim();
-    state.phoneLast4 = vPhone.value.trim();
-    state.cohort = data.cohort || '';
-    state.cohortLocked = !!data.cohortLocked;
-    state.phoneMasked = data.phoneMasked || ('****-' + state.phoneLast4);
-
-    if(data.alreadySubmitted){ renderDone({ already:true, kakaoLink: data.kakaoLink || null }); return; }
-    enterSurvey();
-  });
-
-  /* ---------- 1~4단계: 설문 ---------- */
+  /* ---------- 설문 1~4단계 ---------- */
   const surveyForm = $('#surveyForm');
   const steps = $$('.step', surveyForm);
   const prevBtn = $('#prevBtn'), nextBtn = $('#nextBtn'), submitBtn = $('#submitBtn'), surveyAlert = $('#surveyAlert');
   const progressBar = $('#progressBar'), progressLabel = $('#progressLabel');
-  const fCohort = $('#fCohort'), cohortHint = $('#cohortHint');
+  const fPhone = $('#fPhone');
   const fieldInputs = $$('input[name], select[name], textarea[name]', surveyForm);
 
-  function enterSurvey(){
-    $('#chipName').textContent = state.name;
-    $('#chipPhone').textContent = state.phoneMasked;
-    restoreDraft();
-    if(state.cohortLocked){ fCohort.value = state.cohort; fCohort.readOnly = true; cohortHint.hidden = false; }
-    else { fCohort.readOnly = false; cohortHint.hidden = true; if(!fCohort.value && state.cohort) fCohort.value = state.cohort; }
-    setAlert(surveyAlert, '');
-    goStep(1);
-    showStage('survey');
-  }
-  function goStep(n){
+  fPhone.addEventListener('input', () => { fPhone.value = formatPhone(fPhone.value); });
+
+  function goStep(n, scroll){
     state.step = Math.max(1, Math.min(TOTAL_STEPS, n));
     steps.forEach(s => { s.hidden = Number(s.dataset.step) !== state.step; });
     progressBar.style.width = (state.step / TOTAL_STEPS * 100) + '%';
@@ -435,7 +392,7 @@
     nextBtn.hidden = state.step === TOTAL_STEPS;
     submitBtn.hidden = state.step !== TOTAL_STEPS;
     setAlert(surveyAlert, '');
-    card.scrollIntoView({ behavior:'smooth', block:'start' });
+    if(scroll !== false) scrollToCard();
   }
   function validateStep(n){
     const stepEl = steps.find(s => Number(s.dataset.step) === n);
@@ -471,7 +428,7 @@
     }
     setAlert(surveyAlert, '');
     setBusy(submitBtn, true);
-    const body = Object.assign({ name: state.name, phoneLast4: state.phoneLast4 }, collect());
+    const body = collect();
     const data = await postJson(API.submit, body);
     setBusy(submitBtn, false);
     if(!data.ok){
@@ -481,24 +438,23 @@
         const el = fieldInputs.find(i => i.name === firstKey);
         if(el){ const st = el.closest('.step'); if(st) goStep(Number(st.dataset.step)); }
       }
-      if(data.error === 'NOT_FOUND' || data.error === 'AMBIGUOUS'){ showStage('verify'); setAlert(verifyAlert, MSG[data.error]); return; }
       setAlert(surveyAlert, MSG[data.error] || MSG.SERVER_ERROR);
       return;
     }
     clearDraft();
-    renderDone({ already: !!data.alreadySubmitted, kakaoLink: data.kakaoLink || null });
+    renderDone({ name: (body.name || '').trim(), already: !!data.alreadySubmitted, kakaoLink: data.kakaoLink || null });
   });
 
   /* ---------- 완료 ---------- */
-  function renderDone({ already, kakaoLink }){
+  function renderDone({ name, already, kakaoLink }){
     const title = $('#doneTitle'), lead = $('#doneLead'), btn = $('#kakaoBtn'), box = $('#noLinkBox'), note = $('#doneNote'), eyebrow = $('#doneEyebrow');
     if(already){
       eyebrow.textContent = 'WELCOME BACK · 다시 오셨군요';
-      title.innerHTML = '다시 오셨군요,<br><span class="accent">' + escapeHtml(state.name) + '</span> 시민님';
+      title.innerHTML = '다시 오셨군요,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
       lead.textContent = kakaoLink ? '이미 제출을 완료하셨어요. 아래에서 단톡방으로 바로 입장하실 수 있어요.' : '이미 제출을 완료하셨어요.';
     } else {
       eyebrow.textContent = 'WELCOME · 입장 완료';
-      title.innerHTML = '환영합니다,<br><span class="accent">' + escapeHtml(state.name) + '</span> 시민님';
+      title.innerHTML = '환영합니다,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
       lead.textContent = kakaoLink ? '제출이 완료되었어요. 챌린지 단톡방에서 이어서 만나요.' : '제출이 완료되었어요.';
     }
     if(kakaoLink){
@@ -509,7 +465,9 @@
     }
     showStage('done');
   }
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+
+  restoreDraft();
+  goStep(1, false);
 })();
 </script>
 

@@ -6,11 +6,10 @@ const rate = require('../lib/ratelimit');
 let fake;
 function freshHandlers() {
   fake = installFakeSheets(createFakeSheets());
-  for (const m of ['../lib/citizen', '../api/survey/verify', '../api/survey/submit', '../api/survey/setup']) {
+  for (const m of ['../api/survey/submit', '../api/survey/setup']) {
     delete require.cache[require.resolve(m)];
   }
   return {
-    verify: require('../api/survey/verify'),
     submit: require('../api/survey/submit'),
     setup: require('../api/survey/setup'),
   };
@@ -28,108 +27,74 @@ function mockRes() {
 }
 
 const fullSurvey = {
-  nickname: '', ageGroup: '29', gender: '여성', region: '서울', major: '디자인',
+  name: '홍길동', nickname: '', cohort: '3기', phone: '010-1234-5678',
+  ageGroup: '29', gender: '여성', region: '서울', major: '디자인',
   promoLink: 'https://me.example', educationHelp: 'a', currentConcern: 'b',
   effortAndLimit: 'c', communityExpectation: 'd', futureCommitment: 'e',
 };
 
 test.beforeEach(() => rate.reset());
 
-test('verify: rejects non-POST and bad input', async () => {
+test('submit: rejects non-POST and validation errors', async () => {
   const h = freshHandlers();
   let res = mockRes();
-  await h.verify(mockReq({ method: 'GET' }), res);
+  await h.submit(mockReq({ method: 'GET' }), res);
   assert.equal(res.statusCode, 405);
+
   res = mockRes();
-  await h.verify(mockReq({ body: { name: '홍길동', phoneLast4: '12' } }), res);
+  await h.submit(mockReq({ body: { name: '홍길동', phone: '1234', ageGroup: '29' } }), res);
   assert.equal(res.statusCode, 400);
-  assert.equal(res.body.error, 'INVALID_INPUT');
-});
-
-test('verify: NOT_FOUND / AMBIGUOUS / OK without leaking phone', async () => {
-  const h = freshHandlers();
-  let res = mockRes();
-  await h.verify(mockReq({ body: { name: '홍길동', phoneLast4: '0000' } }), res);
-  assert.deepEqual(res.body, { ok: false, error: 'NOT_FOUND' });
-
-  res = mockRes();
-  await h.verify(mockReq({ body: { name: '박철수', phoneLast4: '2222' } }), res);
-  assert.deepEqual(res.body, { ok: false, error: 'AMBIGUOUS' });
-
-  res = mockRes();
-  await h.verify(mockReq({ body: { name: ' 홍 길동', phoneLast4: '5678' } }), res);
-  assert.equal(res.statusCode, 200);
-  assert.equal(res.body.ok, true);
-  assert.equal(res.body.cohort, '3기');
-  assert.equal(res.body.cohortLocked, true);
-  assert.equal(res.body.phoneMasked, '010-****-5678');
-  assert.equal(res.body.alreadySubmitted, false);
-  assert.ok(!JSON.stringify(res.body).includes('1234'), 'full phone must not leak');
+  assert.equal(res.body.error, 'VALIDATION');
+  assert.ok(res.body.fields.phone);
+  assert.ok(res.body.fields.gender);
+  assert.equal(fake.state.submissions.length, 0);
   assert.equal(res.headers['cache-control'], 'no-store');
 });
 
-test('verify: rate limited after 10 attempts from one ip', async () => {
+test('submit: appends row and returns cohort link', async () => {
   const h = freshHandlers();
-  const headers = { 'x-forwarded-for': '198.51.100.7' };
-  let last;
-  for (let i = 0; i < 11; i++) {
-    last = mockRes();
-    await h.verify(mockReq({ body: { name: '없음', phoneLast4: '0000' }, headers }), last);
-  }
-  assert.equal(last.statusCode, 429);
-  assert.equal(last.body.error, 'RATE_LIMITED');
-});
-
-test('submit: forbids unknown citizen, validates fields, appends row, returns link', async () => {
-  const h = freshHandlers();
-  let res = mockRes();
-  await h.submit(mockReq({ body: { name: '아무개', phoneLast4: '0000', ...fullSurvey } }), res);
-  assert.equal(res.statusCode, 403);
-  assert.equal(res.body.error, 'NOT_FOUND');
-
-  res = mockRes();
-  await h.submit(mockReq({ body: { name: '홍길동', phoneLast4: '5678', ageGroup: '29' } }), res);
-  assert.equal(res.statusCode, 400);
-  assert.equal(res.body.error, 'VALIDATION');
-  assert.ok(res.body.fields.gender);
-  assert.ok(!res.body.fields.cohort, 'cohort comes from roster when present');
-
-  res = mockRes();
-  await h.submit(mockReq({ body: { name: '홍길동', phoneLast4: '5678', cohort: '틀린기수', ...fullSurvey } }), res);
+  const res = mockRes();
+  await h.submit(mockReq({ body: { ...fullSurvey, phone: '01012345678' } }), res);
   assert.equal(res.statusCode, 200);
   assert.deepEqual(res.body, { ok: true, alreadySubmitted: false, kakaoLink: 'https://open.kakao.com/o/fake-3gi' });
   assert.equal(fake.state.submissions.length, 1);
   const row = fake.state.submissions[0];
-  assert.equal(row[1], '3기', 'roster cohort overrides client cohort');
+  assert.equal(row[1], '3기');
   assert.equal(row[2], '홍길동');
-  assert.equal(row[4], '010-1234-5678');
+  assert.equal(row[4], '010-1234-5678', 'phone stored in normalized form');
   assert.equal(row[row.length - 1], 'https://open.kakao.com/o/fake-3gi');
 });
 
-test('submit: duplicate submission returns existing link without appending', async () => {
+test('submit: duplicate phone returns existing link without appending', async () => {
   const h = freshHandlers();
   let res = mockRes();
-  await h.submit(mockReq({ body: { name: '홍길동', phoneLast4: '5678', ...fullSurvey } }), res);
+  await h.submit(mockReq({ body: fullSurvey }), res);
   res = mockRes();
-  await h.submit(mockReq({ body: { name: '홍길동', phoneLast4: '5678', ...fullSurvey } }), res);
+  await h.submit(mockReq({ body: { ...fullSurvey, name: '홍길동2', phone: '010 1234 5678' } }), res);
   assert.equal(res.body.alreadySubmitted, true);
   assert.equal(res.body.kakaoLink, 'https://open.kakao.com/o/fake-3gi');
   assert.equal(fake.state.submissions.length, 1);
-
-  // verify afterwards also short-circuits to the link
-  res = mockRes();
-  await h.verify(mockReq({ body: { name: '홍길동', phoneLast4: '5678' } }), res);
-  assert.equal(res.body.alreadySubmitted, true);
-  assert.equal(res.body.kakaoLink, 'https://open.kakao.com/o/fake-3gi');
 });
 
-test('submit: citizen without cohort in roster uses typed cohort; missing link → null', async () => {
+test('submit: cohort without link → null link, row still saved', async () => {
   const h = freshHandlers();
   const res = mockRes();
-  await h.submit(mockReq({ body: { name: '김영희', phoneLast4: '1111', cohort: '5기', ...fullSurvey } }), res);
+  await h.submit(mockReq({ body: { ...fullSurvey, cohort: '5기', phone: '010-9999-1111' } }), res);
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.kakaoLink, null);
   assert.equal(fake.state.submissions[0][1], '5기');
+});
+
+test('submit: rate limited after 8 attempts from one ip', async () => {
+  const h = freshHandlers();
+  const headers = { 'x-forwarded-for': '198.51.100.7' };
+  let last;
+  for (let i = 0; i < 9; i++) {
+    last = mockRes();
+    await h.submit(mockReq({ body: { name: 'x' }, headers }), last);
+  }
+  assert.equal(last.statusCode, 429);
+  assert.equal(last.body.error, 'RATE_LIMITED');
 });
 
 test('setup: requires SETUP_SECRET and matching key', async () => {
@@ -147,6 +112,6 @@ test('setup: requires SETUP_SECRET and matching key', async () => {
   res = mockRes();
   await h.setup(mockReq({ method: 'GET', url: '/api/survey/setup?key=abc' }), res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(fake.state.setupCalls, ['roster', 'survey']);
+  assert.deepEqual(fake.state.setupCalls, ['survey']);
   delete process.env.SETUP_SECRET;
 });
