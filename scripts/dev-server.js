@@ -15,6 +15,7 @@ if (!process.env.REAL_SHEETS) {
 
 const handlers = {
   '/api/survey/submit': require('../api/survey/submit'),
+  '/api/survey/lookup': require('../api/survey/lookup'),
   '/api/survey/setup': require('../api/survey/setup'),
   '/api/survey/health': require('../api/survey/health'),
 };

@@ -84,21 +84,23 @@ async function main() {
   if (await page.evaluate(() => localStorage.getItem('nadaun_survey_draft_v2'))) throw new Error('draft should be cleared after submit');
   await page.screenshot({ path: path.join(SHOTS, '05-done.png') });
 
-  // 같은 연락처로 재제출 → 이미 제출, 바로 링크
+  // 같은 성함+연락처로 다시 오면 1단계 '다음'에서 바로 단톡방 안내로
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
-  await page.fill('#fName', '홍길동'); await page.fill('#fPhone', '010-1234-5678'); await page.fill('#fCohort', '3기');
+  await page.fill('#fName', '홍 길동'); await page.fill('#fPhone', '01012345678'); await page.fill('#fCohort', '3기');
   await page.click('#nextBtn');
-  await page.fill('#fAge', '29'); await page.selectOption('#fGender', '여성'); await page.fill('#fRegion', '서울'); await page.fill('#fMajor', '경영'); await page.fill('#fPromo', 'https://x');
-  await page.click('#nextBtn');
-  await page.fill('#fHelp', 'a'); await page.fill('#fConcern', 'b'); await page.fill('#fEffort', 'c');
-  await page.click('#nextBtn');
-  await page.fill('#fExpect', 'd'); await page.fill('#fCommit', 'e');
-  await page.click('#submitBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   if (!(await page.textContent('#doneTitle')).includes('다시 오셨군요')) throw new Error('returning copy missing');
   if ((await page.$$('#roomList a')).length !== 3) throw new Error('returning citizen should see rooms');
+  if (await page.isVisible('.step[data-step="2"]')) throw new Error('survey should have been skipped');
   await page.screenshot({ path: path.join(SHOTS, '06-returning.png') });
+
+  // 다른 이름이면 건너뛰지 않고 2단계로 진행 (제출 시 연락처로 중복 처리됨)
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#loader.off');
+  await page.fill('#fName', '다른사람'); await page.fill('#fPhone', '010-1234-5678'); await page.fill('#fCohort', '3기');
+  await page.click('#nextBtn');
+  await page.waitForSelector('.step[data-step="2"]:not([hidden])');
 
   // 방 목록이 비어 있을 때(전부 비활성) → 안내 박스
   await page.route('**/api/survey/submit', (r) => r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ ok: true, alreadySubmitted: false, rooms: [] }) }));

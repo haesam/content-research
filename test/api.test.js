@@ -6,12 +6,13 @@ const rate = require('../lib/ratelimit');
 let fake;
 function freshHandlers(seed) {
   fake = installFakeSheets(createFakeSheets(seed));
-  for (const m of ['../api/survey/submit', '../api/survey/setup']) {
+  for (const m of ['../api/survey/submit', '../api/survey/setup', '../api/survey/lookup']) {
     delete require.cache[require.resolve(m)];
   }
   return {
     submit: require('../api/survey/submit'),
     setup: require('../api/survey/setup'),
+    lookup: require('../api/survey/lookup'),
   };
 }
 
@@ -140,6 +141,35 @@ test('health: guarded by SETUP_SECRET and returns the report', async () => {
   assert.equal(res.statusCode, 200);
   assert.equal(res.body.ok, true);
   delete process.env.SETUP_SECRET;
+});
+
+test('lookup: found only when both name and phone match a prior submission', async () => {
+  const h = freshHandlers();
+  let res = mockRes();
+  await h.lookup(mockReq({ body: { name: '홍길동', phone: '010-1234-5678' } }), res);
+  assert.deepEqual(res.body, { ok: true, found: false });
+
+  res = mockRes();
+  await h.submit(mockReq({ body: fullSurvey }), res);
+
+  res = mockRes();
+  await h.lookup(mockReq({ body: { name: '홍 길동', phone: '01012345678' } }), res);
+  assert.equal(res.body.found, true);
+  assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
+
+  res = mockRes();
+  await h.lookup(mockReq({ body: { name: '김영희', phone: '010-1234-5678' } }), res);
+  assert.deepEqual(res.body, { ok: true, found: false }, 'same phone but different name → not found');
+
+  res = mockRes();
+  await h.lookup(mockReq({ body: { name: '홍길동', phone: '12' } }), res);
+  assert.equal(res.statusCode, 400);
+
+  // 탭이 아직 없으면 found:false
+  fake.readSurveySubmissions = async () => { throw new Error("Unable to parse range: '설문응답'!A2:P"); };
+  res = mockRes();
+  await h.lookup(mockReq({ body: { name: '홍길동', phone: '010-1234-5678' } }), res);
+  assert.deepEqual(res.body, { ok: true, found: false });
 });
 
 test('submit: rate limited after 8 attempts from one ip', async () => {

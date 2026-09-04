@@ -12,6 +12,7 @@
 ```
 public/index.html            ← 나다운타운 페이지 (3D 히어로 + 설문 4단계 + 완료 화면)
 api/survey/submit.js         ← POST 설문 제출 (시트 저장 → 단톡 링크 반환)
+api/survey/lookup.js         ← POST 성함+연락처가 기존 제출과 일치하면 설문 없이 바로 단톡방 안내
 api/survey/setup.js          ← GET  최초 1회 시트 양식(탭·헤더) 생성 (SETUP_SECRET 필요)
 api/survey/health.js         ← GET  배포 진단: 환경변수·시트 권한·탭 점검 + 해결 방법 (SETUP_SECRET 필요)
 api/cron/fetch-youtube.js    ← 유튜브 크론
@@ -88,7 +89,10 @@ https://<프로젝트이름>.vercel.app/api/survey/setup?key=<SETUP_SECRET>
 ## 동작 흐름
 
 ```
-[시민 입장하기] → 설문 4단계 (임시저장: 브라우저 localStorage)
+[시민 입장하기] → 설문 1단계(성함·연락처·닉네임·기수)
+   → '다음' 클릭 시 POST /api/survey/lookup
+        └─ 성함+연락처가 기존 제출과 일치 → 2~4단계 건너뛰고 바로 완료 화면(단톡방 목록)
+   → 설문 2~4단계 (임시저장: 브라우저 localStorage)
    → POST /api/survey/submit
         ├─ 같은 연락처가 이미 있음 → 단톡방 목록만 반환 (행 추가 안 함)
         └─ 새 제출 → 설문응답 탭에 추가 → 단톡방 목록 반환
