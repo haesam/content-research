@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HAVEN Residences — Watch it rise.</title>
+<meta name="description" content="스크롤 스크럽(scroll-scrub) 히어로 템플릿. 프레임 시퀀스를 스크롤 진행도에 맞춰 캔버스에 그립니다.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;1,400&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── 브랜드 토큰: 여기 색/폰트만 바꾸면 전체 무드가 바뀝니다 ── */
+  :root{
+    --bg:#0b1016; --bg-2:#0f151d; --ink:#f3ede3; --muted:#a39a8c;
+    --gold:#d8b46b; --gold-2:#efd9a4; --line:rgba(216,180,107,.22);
+    --serif:"Cormorant Garamond",Georgia,"Times New Roman",serif;
+    --sans:"Inter",-apple-system,"Segoe UI",Roboto,"Apple SD Gothic Neo","Noto Sans KR",sans-serif;
+    --pin:300vh;               /* 히어로가 고정된 채 스크롤되는 길이 (길수록 천천히 재생) */
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:auto}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-weight:300;line-height:1.6;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+  a{color:inherit;text-decoration:none}
+  body.record{cursor:none}
+  body.record::-webkit-scrollbar{display:none}
+  body.record{scrollbar-width:none}
+
+  /* ── 내비 ── */
+  .nav{position:fixed;inset:0 0 auto 0;z-index:50;display:flex;align-items:center;justify-content:space-between;padding:22px 40px;mix-blend-mode:difference}
+  .brand{font-family:var(--serif);font-size:22px;letter-spacing:.32em;text-transform:uppercase}
+  .brand small{display:block;font-family:var(--sans);font-size:9px;letter-spacing:.42em;color:var(--muted);margin-top:2px}
+  .menu{display:flex;gap:34px;font-size:11px;letter-spacing:.24em;text-transform:uppercase}
+  .menu a{opacity:.8}.menu a:hover{opacity:1}
+  .btn{display:inline-flex;align-items:center;gap:12px;border:1px solid var(--gold);color:var(--gold-2);padding:14px 26px;font-size:11px;letter-spacing:.28em;text-transform:uppercase;transition:background .35s,color .35s}
+  .btn:hover{background:var(--gold);color:#0b1016}
+  .btn svg{width:14px;height:14px}
+
+  /* ── 히어로(핀 구간) ── */
+  .hero{position:relative;height:var(--pin)}
+  .hero__stage{position:sticky;top:0;height:100vh;height:100svh;overflow:hidden;display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);align-items:center}
+  .hero__copy{position:relative;z-index:2;padding:0 0 0 clamp(24px,7vw,110px)}
+  .eyebrow{font-size:11px;letter-spacing:.42em;text-transform:uppercase;color:var(--gold);margin-bottom:26px;display:flex;align-items:center;gap:14px}
+  .eyebrow::before{content:"";width:34px;height:1px;background:var(--gold)}
+  .hero h1{font-family:var(--serif);font-weight:400;font-size:clamp(46px,7.4vw,112px);line-height:.98;letter-spacing:-.01em}
+  .hero h1 .line{display:block;overflow:hidden}
+  .hero h1 .line span{display:block;transform:translateY(110%)}
+  .hero h1 em{font-style:italic;color:var(--gold-2)}
+  .hero p{max-width:40ch;margin:30px 0 40px;color:var(--muted);font-size:15px}
+  .hero__canvas{position:absolute;inset:0;z-index:1}
+  .hero__canvas canvas{width:100%;height:100%;display:block}
+  .hero__canvas::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,var(--bg) 0%,rgba(11,16,22,.75) 28%,rgba(11,16,22,0) 60%),linear-gradient(0deg,var(--bg) 0%,rgba(11,16,22,0) 22%)}
+  .hero__copy > *{opacity:0;transform:translateY(24px)}
+  .hint{position:absolute;left:50%;bottom:34px;transform:translateX(-50%);z-index:3;font-size:10px;letter-spacing:.36em;text-transform:uppercase;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:12px}
+  .hint i{width:1px;height:46px;background:linear-gradient(var(--gold),transparent);animation:drop 1.8s ease-in-out infinite}
+  @keyframes drop{0%{transform:scaleY(0);transform-origin:top}50%{transform:scaleY(1);transform-origin:top}51%{transform-origin:bottom}100%{transform:scaleY(0);transform-origin:bottom}}
+  .progress{position:absolute;right:40px;bottom:40px;z-index:3;display:flex;gap:8px;align-items:center;font-size:10px;letter-spacing:.3em;color:var(--muted)}
+  .progress b{display:block;width:120px;height:1px;background:var(--line);position:relative}
+  .progress b::after{content:"";position:absolute;inset:0;background:var(--gold);transform-origin:left;transform:scaleX(var(--p,0))}
+  .loader{position:fixed;inset:0;z-index:99;background:var(--bg);display:grid;place-items:center;font-size:10px;letter-spacing:.42em;text-transform:uppercase;color:var(--muted);transition:opacity .6s}
+  .loader.done{opacity:0;pointer-events:none}
+
+  /* ── 이후 섹션 (스크롤 등장) ── */
+  section.block{padding:clamp(80px,12vw,160px) clamp(24px,7vw,110px);border-top:1px solid var(--line)}
+  .reveal{opacity:0;transform:translateY(40px)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:48px}
+  .grid h3{font-family:var(--serif);font-weight:400;font-size:34px;margin-bottom:12px}
+  .grid p{color:var(--muted);font-size:14px}
+  .num{font-size:11px;letter-spacing:.4em;color:var(--gold);margin-bottom:24px}
+  .quote{font-family:var(--serif);font-size:clamp(30px,4.6vw,64px);line-height:1.15;max-width:22ch;font-weight:400}
+  .quote em{color:var(--gold-2)}
+  .gallery{display:grid;grid-template-columns:2fr 1fr 1fr;gap:16px;margin-top:64px}
+  .gallery figure{aspect-ratio:4/5;background:var(--bg-2);border:1px solid var(--line);overflow:hidden;position:relative}
+  .gallery figure:first-child{grid-row:span 2;aspect-ratio:auto}
+  .gallery figure div{position:absolute;inset:-12%;background:radial-gradient(60% 60% at 40% 30%,rgba(216,180,107,.28),transparent 70%),linear-gradient(160deg,#151d27,#0b1016)}
+  .gallery figcaption{position:absolute;left:20px;bottom:18px;font-size:10px;letter-spacing:.32em;text-transform:uppercase;color:var(--muted)}
+  .cta{text-align:center}
+  .cta h2{font-family:var(--serif);font-weight:400;font-size:clamp(40px,6vw,88px);line-height:1;margin-bottom:34px}
+  footer{padding:36px clamp(24px,7vw,110px);display:flex;justify-content:space-between;font-size:10px;letter-spacing:.3em;text-transform:uppercase;color:var(--muted);border-top:1px solid var(--line)}
+
+  @media (max-width:860px){
+    .nav{padding:18px 20px}.menu{display:none}
+    .hero__stage{grid-template-columns:1fr;align-items:end;padding-bottom:110px}
+    .hero__copy{padding:0 22px}
+    .hero__canvas::after{background:linear-gradient(0deg,var(--bg) 0%,rgba(11,16,22,.7) 40%,rgba(11,16,22,0) 75%)}
+    .progress{display:none}.grid{grid-template-columns:1fr}.gallery{grid-template-columns:1fr 1fr}
+  }
+</style>
+</head>
+<body>
+<div class="loader" id="loader">Loading <span id="pct">0</span>%</div>
+
+<nav class="nav">
+  <a class="brand" href="#">Haven<small>Residences</small></a>
+  <div class="menu"><a href="#story">Story</a><a href="#residences">Residences</a><a href="#gallery">Gallery</a><a href="#contact">Contact</a></div>
+  <a class="btn" href="#contact">Enquire</a>
+</nav>
+
+<!--
+  ▼ 히어로: data-* 속성만 바꾸면 자기 영상으로 교체됩니다.
+  data-src   : 프레임 경로 패턴. {i} 자리에 번호가 들어감
+  data-count : 프레임 수
+  data-pad   : 번호 자릿수 (frame_001 → 3)
+  data-start : 시작 번호 (기본 1)
+  data-fit   : cover | contain
+  data-focus : 캔버스에서 그림의 기준점 (0~1, 가로). 0.5 = 중앙, 0.7 = 오른쪽 치우침
+-->
+<header class="hero" id="hero"
+  data-src="frames/demo/frame_{i}.webp" data-count="120" data-pad="3" data-start="1" data-fit="cover" data-focus="0.62">
+  <div class="hero__stage">
+    <div class="hero__canvas"><canvas id="seq"></canvas></div>
+    <div class="hero__copy">
+      <div class="eyebrow">The Horizon · 2027</div>
+      <h1>
+        <span class="line"><span>Watch</span></span>
+        <span class="line"><span>it <em>rise.</em></span></span>
+      </h1>
+      <p>도심 위로 떠오르는 42층의 빛. 스크롤을 내리면 설계도 위에 하나씩 불이 켜집니다. 첫 화면에서 브랜드가 무엇을 약속하는지 몸으로 느끼게 하세요.</p>
+      <a class="btn" href="#residences">Explore the horizon
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M13 6l6 6-6 6"/></svg></a>
+    </div>
+    <div class="hint">Scroll<i></i></div>
+    <div class="progress"><span>Rise</span><b id="bar"></b><span id="pctScroll">00</span></div>
+  </div>
+</header>
+
+<main>
+  <section class="block" id="story">
+    <div class="num reveal">01 — Story</div>
+    <h2 class="quote reveal">A residence that <em>arrives</em> the moment you scroll.</h2>
+  </section>
+
+  <section class="block" id="residences">
+    <div class="num reveal">02 — Residences</div>
+    <div class="grid">
+      <div class="reveal"><h3>Sky Villas</h3><p>38–42층, 270도 파노라마. 계절이 바뀌는 속도로 빛이 들어오는 집.</p></div>
+      <div class="reveal"><h3>Garden Terrace</h3><p>지상과 가장 가까운 정원층. 아침 안개가 거실까지 들어옵니다.</p></div>
+      <div class="reveal"><h3>The Lantern</h3><p>밤이 되면 건물 자체가 등불이 되는 옥상 라운지.</p></div>
+    </div>
+  </section>
+
+  <section class="block" id="gallery">
+    <div class="num reveal">03 — Gallery</div>
+    <div class="gallery">
+      <figure class="reveal"><div data-parallax="0.15"></div><figcaption>Lobby · dusk</figcaption></figure>
+      <figure class="reveal"><div data-parallax="0.25"></div><figcaption>Unit 4201</figcaption></figure>
+      <figure class="reveal"><div data-parallax="0.35"></div><figcaption>Pool deck</figcaption></figure>
+      <figure class="reveal"><div data-parallax="0.2"></div><figcaption>Lantern lounge</figcaption></figure>
+      <figure class="reveal"><div data-parallax="0.3"></div><figcaption>Garden</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="block cta" id="contact">
+    <h2 class="reveal">Reserve your <em style="color:var(--gold-2);font-style:italic">light</em>.</h2>
+    <a class="btn reveal" href="mailto:hello@example.com">Book a private viewing</a>
+  </section>
+</main>
+<footer><span>© Haven Residences</span><span>Scroll-scrub template</span></footer>
+
+<script src="vendor/gsap.min.js"></script>
+<script src="vendor/ScrollTrigger.min.js"></script>
+<script>
+(async () => {
+  gsap.registerPlugin(ScrollTrigger);
+  if (new URLSearchParams(location.search).has('record')) document.body.classList.add('record');
+
+  /* ── 1) 프레임 프리로드 ── */
+  const hero = document.getElementById('hero');
+  const d = hero.dataset;
+  const count = +d.count, start = +(d.start || 1), pad = +(d.pad || 3);
+  const src = i => d.src.replace('{i}', String(i).padStart(pad, '0'));
+  const pctEl = document.getElementById('pct');
+  let loaded = 0;
+  const frames = await Promise.all(Array.from({length: count}, (_, k) => new Promise(res => {
+    const im = new Image();
+    im.onload = im.onerror = () => { pctEl.textContent = Math.round(++loaded / count * 100); res(im); };
+    im.src = src(start + k);
+  })));
+
+  /* ── 2) 캔버스 그리기 (DPR 대응 + cover/contain) ── */
+  const canvas = document.getElementById('seq'), ctx = canvas.getContext('2d');
+  const focus = +(d.focus || 0.5), fit = d.fit || 'cover';
+  let cur = -1;
+  function size() {
+    const dpr = Math.min(devicePixelRatio || 1, 2);
+    const r = canvas.getBoundingClientRect();
+    canvas.width = r.width * dpr; canvas.height = r.height * dpr;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    draw(cur < 0 ? 0 : cur, true);
+  }
+  function draw(i, force) {
+    i = Math.max(0, Math.min(count - 1, i | 0));
+    if (i === cur && !force) return;
+    cur = i;
+    const im = frames[i]; if (!im || !im.naturalWidth) return;
+    const cw = canvas.clientWidth, ch = canvas.clientHeight;
+    const s = fit === 'contain' ? Math.min(cw / im.naturalWidth, ch / im.naturalHeight) : Math.max(cw / im.naturalWidth, ch / im.naturalHeight);
+    const w = im.naturalWidth * s, h = im.naturalHeight * s;
+    ctx.clearRect(0, 0, cw, ch);
+    ctx.drawImage(im, (cw - w) * focus, (ch - h) / 2, w, h);
+  }
+  addEventListener('resize', size); size();
+  document.getElementById('loader').classList.add('done');
+
+  /* ── 3) 스크롤 → 프레임 번호 (scrub) ── */
+  const state = { f: 0 };
+  const bar = document.getElementById('bar'), pctScroll = document.getElementById('pctScroll');
+  gsap.to(state, {
+    f: count - 1, ease: 'none',
+    scrollTrigger: {
+      trigger: hero, start: 'top top', end: 'bottom bottom',
+      scrub: 0.6,                       // 0.3~1: 클수록 부드럽고 살짝 뒤따라옴
+      onUpdate: st => { bar.style.setProperty('--p', st.progress); pctScroll.textContent = String(Math.round(st.progress * 100)).padStart(2, '0'); }
+    },
+    onUpdate: () => draw(state.f)
+  });
+
+  /* ── 4) 히어로 텍스트 등장 (로딩 후 1회) ── */
+  gsap.timeline({ delay: .2 })
+    .to('.hero__copy > *', { opacity: 1, y: 0, duration: 1.1, stagger: .12, ease: 'power3.out' }, 0)
+    .to('.hero h1 .line span', { y: 0, duration: 1.3, stagger: .15, ease: 'power4.out' }, .1);
+
+  gsap.to('.hint', { opacity: 0, ease: 'none', scrollTrigger: { trigger: hero, start: 'top top', end: '15% top', scrub: true } });
+
+  /* 스크롤이 진행되면 카피는 살짝 위로 밀려나며 흐려짐 (핀 후반) */
+  gsap.to('.hero__copy', { y: -60, opacity: 0, ease: 'none',
+    scrollTrigger: { trigger: hero, start: '60% bottom', end: 'bottom bottom', scrub: true } });
+
+  /* ── 5) 이후 섹션: 등장 + 패럴랙스 ── */
+  gsap.utils.toArray('.reveal').forEach(el => gsap.to(el, {
+    opacity: 1, y: 0, duration: 1.2, ease: 'power3.out',
+    scrollTrigger: { trigger: el, start: 'top 85%', once: true }
+  }));
+  gsap.utils.toArray('[data-parallax]').forEach(el => gsap.fromTo(el, { yPercent: -8 }, {
+    yPercent: 8, ease: 'none', scrollTrigger: { trigger: el.parentElement, start: 'top bottom', end: 'bottom top', scrub: true }
+  }));
+
+  /* 녹화 자동화 훅: window.__ready 가 true 가 되면 record.mjs 가 스크롤을 시작합니다 */
+  window.__ready = true;
+})();
+</script>
+</body>
+</html>
