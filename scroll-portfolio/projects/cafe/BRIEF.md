@@ -114,3 +114,28 @@ scripts/extract-frames.sh halfpast.mp4 frames/cafe 120 1600 80
 
 ## 3. 이 뒤의 순서 (GUIDE.md 4~7단계)
 사이트 교체 → Vercel 배포 → `record.mjs` 녹화 → 노트북 목업 합성 → 릴스 업로드 (캡션은 위에 준비됨).
+
+---
+
+## 4. 생성 기록 (2026-09-07 실행)
+
+| 단계 | 모델 | Job ID | 결과 |
+|---|---|---|---|
+| ① 시작 스틸 | nano_banana_pro 2K 16:9 | `02896e1d-d74c-4c48-9169-9e2222d3b877` | 완료 (2장 중 1장 실패) |
+| ② 끝 스틸 A | nano_banana_pro (①을 reference) | `bd3f13d4-b95d-4ccc-be19-11947f231054` | 완료 → 영상에 사용 |
+| ② 끝 스틸 B | 〃 | `4b4a8a24-d3c3-4c55-8a64-d73a7fad283a` | 완료 (예비) |
+| ③ 영상 1 | kling3_0 pro 8초 sound off, start=①, end=②A | `f7180a1a-61f8-4475-adde-3b93af763917` | 완료 |
+| ③ 영상 2 | 〃 (같은 설정 변형) | `225e7ec8-84fd-4dda-a854-7eb4427c11db` | 완료 |
+
+다운로드 (힉스필드 생성 목록에서도 열립니다):
+- 영상 1: https://d8j0ntlcm91z4.cloudfront.net/user_2zKID9uGHH3s9RILDyuHqKJaCTk/hf_20260907_164135_f7180a1a-61f8-4475-adde-3b93af763917.mp4
+- 영상 2: https://d8j0ntlcm91z4.cloudfront.net/user_2zKID9uGHH3s9RILDyuHqKJaCTk/hf_20260907_164135_225e7ec8-84fd-4dda-a854-7eb4427c11db.mp4
+- 시작 스틸: https://d8j0ntlcm91z4.cloudfront.net/user_2zKID9uGHH3s9RILDyuHqKJaCTk/hf_20260907_163945_02896e1d-d74c-4c48-9169-9e2222d3b877.png
+- 끝 스틸 A: https://d8j0ntlcm91z4.cloudfront.net/user_2zKID9uGHH3s9RILDyuHqKJaCTk/hf_20260907_164044_bd3f13d4-b95d-4ccc-be19-11947f231054.png
+
+다음 명령 (본인 PC에서):
+```bash
+curl -L -o halfpast.mp4 "<위 영상 URL 중 마음에 드는 것>"
+scripts/extract-frames.sh halfpast.mp4 frames/cafe 120 1600 80
+# index.html → data-src="frames/cafe/frame_{i}.webp" data-count="120" data-focus="0.7"
+```
