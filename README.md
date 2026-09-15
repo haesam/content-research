@@ -1,9 +1,10 @@
 # nad-challenge (나다운타운 챌린지)
 
-이 저장소에는 두 가지가 들어 있습니다.
+이 저장소에는 세 가지가 들어 있습니다.
 
 1. **유튜브 파이프라인** (`api/cron/fetch-youtube.js`) — 매일 아침 6시(KST) config 탭의 키워드로 "구독자 대비 조회수 배율이 높은" 영상을 찾아 contents 탭에 저장
 2. **나다운타운 시민 입장 · 설문 사이트** (`public/index.html` + `api/survey/*`) — 수강생이 설문 작성 → 구글시트 저장 → 챌린지 단톡방 링크 안내
+3. **홈페이지 진단 웹서비스** (`public/diagnosis/index.html` + `api/diagnosis/*`) — 교회·비영리단체·전문직 사무소·소상공인이 대상을 고르고 3분 진단을 받은 뒤, 리포트를 보고 연락처를 남기면 리드가 구글시트에 쌓임
 
 ---
 
@@ -16,7 +17,15 @@ api/survey/lookup.js         ← POST 성함+연락처가 기존 제출과 일�
 api/survey/setup.js          ← GET  최초 1회 시트 양식(탭·헤더) 생성 (SETUP_SECRET 필요)
 api/survey/health.js         ← GET  배포 진단: 환경변수·시트 권한·탭 점검 + 해결 방법 (SETUP_SECRET 필요)
 api/cron/fetch-youtube.js    ← 유튜브 크론
-lib/sheets.js                ← 구글시트 읽기/쓰기 (두 기능 공용)
+
+public/diagnosis/index.html  ← 홈페이지 진단 페이지 (대상 선택 → 훅 랜딩 → 12문항 → 리포트 → 리드 폼)
+api/diagnosis/config.js      ← GET  대상별 카피·문항·축 정보 (비밀 아님, 프런트가 그대로 내려받음)
+api/diagnosis/submit.js      ← POST 진단 제출 (점수 서버 재계산 → 시트 저장 → 점수 반환)
+api/diagnosis/setup.js       ← GET  최초 1회 시트 양식(탭·헤더) 생성 (SETUP_SECRET 필요)
+api/diagnosis/health.js      ← GET  배포 진단: 환경변수·시트 권한·탭 점검 + 해결 방법 (SETUP_SECRET 필요)
+lib/diagnosis.js             ← 대상별 카피·문항·채점·등급·리드 검증 (순수 로직)
+
+lib/sheets.js                ← 구글시트 읽기/쓰기 (세 기능 공용)
 lib/survey.js                ← 검증·행 조립·링크 선택 (순수 로직)
 lib/ratelimit.js             ← 반복 제출 방지용 간단한 요청 제한
 scripts/dev-server.js        ← 로컬 실행 (가짜 시트, 구글 인증 불필요)
@@ -120,6 +129,53 @@ NODE_PATH=$(npm root -g) npm run e2e   # 브라우저 흐름 점검 (playwright 
 
 ---
 
+## 홈페이지 진단 웹서비스 (`/diagnosis/`)
+
+교회·비영리단체·전문직 사무소(노무사·회계사·변호사·세무사)·소상공인을 대상으로, 대상 선택 →
+분기별 훅 랜딩 → 6개 축(모바일·첫인상·신뢰 신호·구조/동선·행동 유도·검색 노출) × 2문항(총 12문항)
+진단 → 처리 중 연출 → 개인화 리포트(레이더 차트·대조군 비교·긴급성) → 연락처를 남기면 "개선
+시안 미리보기" 해제, 순서로 이어지는 리드 수집 페이지입니다. 링크에 `?target=church`처럼 대상을
+지정해서 보내면 대상 선택 화면을 건너뛰고 바로 훅 랜딩으로 진입합니다(DM 발송용).
+
+문항 점수는 브라우저에서 즉시 계산해 리포트를 보여주고, 제출 시 서버가 `answers`로부터 점수를
+다시 계산해 저장합니다(클라이언트 값을 그대로 믿지 않음).
+
+### 1) 환경변수
+
+| 이름 | 설명 |
+|---|---|
+| `GOOGLE_SERVICE_ACCOUNT_KEY` | 서비스 계정 JSON 전체 (기존 기능들과 같은 값 재사용) |
+| `SETUP_SECRET` | 시트 양식 생성 엔드포인트를 보호하는 비밀 문자열 (기존 기능들과 같은 값 재사용 가능) |
+| `GOOGLE_DIAGNOSIS_SHEET_ID` | **필수.** 진단 리드를 저장할 구글시트 ID. 나다운타운 설문과 완전히 다른 대상을 다루므로 기본값이 없습니다 — 반드시 새 스프레드시트를 만들어 ID를 넣으세요. |
+
+서비스 계정 이메일(`GOOGLE_SERVICE_ACCOUNT_KEY`의 `client_email`)을 그 시트에 **편집자**로 공유하세요.
+
+### 2) 배포 후 시트 양식 만들기 (최초 1회)
+
+```
+https://<프로젝트이름>.vercel.app/api/diagnosis/setup?key=<SETUP_SECRET>
+```
+
+`홈페이지진단리드` 탭과 헤더(제출일시·대상유형·종합점수·등급·6축 점수·최저축·이름·연락처·기관명·관심분야)가
+생깁니다. 이미 있으면 데이터는 건드리지 않습니다. (첫 제출 때 탭이 없으면 자동으로도 만들어집니다.)
+
+### 3) 로컬에서 돌려보기
+
+```
+npm run dev:local          # http://localhost:3000/diagnosis/  (가짜 시트, 구글 인증 불필요)
+npm test                   # lib/diagnosis.js + API 단위 테스트 포함
+```
+
+### 4) 카피·문항 수정하기
+
+대상별 랜딩 카피·축 훅 카피·문항·등급 기준·비교군 평균은 전부 `lib/diagnosis.js`의 `TARGETS`
+객체 하나에 모여 있습니다. 프런트엔드는 `GET /api/diagnosis/config`로 이 값을 그대로 받아
+렌더링하므로, 문구를 바꾸려면 이 파일만 고치면 됩니다(배포만 다시 하면 반영).
+
+문제 진단: `https://<프로젝트이름>.vercel.app/api/diagnosis/health?key=<SETUP_SECRET>`
+
+---
+
 ## 유튜브 파이프라인 (기존)
 
 배포 후 수동 실행:
@@ -147,3 +203,7 @@ https://<프로젝트이름>.vercel.app/api/survey/health?key=<SETUP_SECRET>
 - 제출이 계속 실패(잠시 문제가 생겼어요) → 시트 탭 이름이 `설문응답`, `챌린지링크`인지, 서비스 계정 권한이 편집자인지 확인
 - 완료 화면에 단톡방 버튼이 안 뜸 → `챌린지링크` 탭의 링크가 채워져 있는지, 활성이 FALSE가 아닌지 확인
 - `GOOGLE_SERVICE_ACCOUNT_KEY 환경변수가 없습니다` → Vercel 환경변수 등록 여부와 Production 체크 확인
+
+홈페이지 진단 웹서비스가 막히면 `/api/diagnosis/health?key=<SETUP_SECRET>`를 여세요.
+- `GOOGLE_DIAGNOSIS_SHEET_ID 환경변수가 없습니다` → 진단 리드용 구글시트를 새로 만들고 ID를 환경변수에 등록 (나다운타운 시트와 절대 겹치지 않게)
+- 리드 제출 실패 → 그 시트에 서비스 계정이 편집자로 공유되어 있는지, 탭 이름이 `홈페이지진단리드`인지 확인

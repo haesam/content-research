@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "vercel dev",
     "dev:local": "node scripts/dev-server.js",
-    "test": "node --test test/survey.test.js test/api.test.js",
+    "test": "node --test test/survey.test.js test/api.test.js test/diagnosis.test.js test/diagnosis-api.test.js",
     "e2e": "node scripts/e2e-check.js"
   },
   "dependencies": {

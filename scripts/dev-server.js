@@ -13,11 +13,19 @@ if (!process.env.REAL_SHEETS) {
   process.env.SETUP_SECRET = process.env.SETUP_SECRET || 'dev-secret';
 }
 
+if (!process.env.GOOGLE_DIAGNOSIS_SHEET_ID) {
+  process.env.GOOGLE_DIAGNOSIS_SHEET_ID = 'dev-diagnosis-sheet';
+}
+
 const handlers = {
   '/api/survey/submit': require('../api/survey/submit'),
   '/api/survey/lookup': require('../api/survey/lookup'),
   '/api/survey/setup': require('../api/survey/setup'),
   '/api/survey/health': require('../api/survey/health'),
+  '/api/diagnosis/config': require('../api/diagnosis/config'),
+  '/api/diagnosis/submit': require('../api/diagnosis/submit'),
+  '/api/diagnosis/setup': require('../api/diagnosis/setup'),
+  '/api/diagnosis/health': require('../api/diagnosis/health'),
 };
 
 const PUBLIC_DIR = path.join(__dirname, '..', 'public');
@@ -51,7 +59,11 @@ const server = http.createServer((req, res) => {
   }
   let file = pathname === '/' ? '/index.html' : pathname;
   file = path.normalize(path.join(PUBLIC_DIR, file));
-  if (!file.startsWith(PUBLIC_DIR) || !fs.existsSync(file) || fs.statSync(file).isDirectory()) {
+  if (!file.startsWith(PUBLIC_DIR)) { res.statusCode = 404; return res.end('not found'); }
+  if (fs.existsSync(file) && fs.statSync(file).isDirectory()) {
+    file = path.join(file, 'index.html');
+  }
+  if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) {
     res.statusCode = 404; return res.end('not found');
   }
   res.setHeader('Content-Type', MIME[path.extname(file)] || 'application/octet-stream');

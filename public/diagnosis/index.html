@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<title>홈페이지 진단 · 3분</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📊</text></svg>">
+<style>
+  :root{
+    --accent:#334155; --accent-dark:#1e293b; --accent-soft:#eef1f5;
+    --ink:#1a1d23; --sub:#5b6472; --line:#e4e7ec; --bg:#f7f6f3; --card:#ffffff;
+    --danger:#c1462f; --good:#1f7a5c;
+    --radius:16px;
+  }
+  body[data-target="church"]{ --accent:#8b5e34; --accent-dark:#5c3d1f; --accent-soft:#f5ede1; }
+  body[data-target="nonprofit"]{ --accent:#1f7a5c; --accent-dark:#134f3b; --accent-soft:#e4f3ec; }
+  body[data-target="professional"]{ --accent:#28456e; --accent-dark:#16273f; --accent-soft:#e7edf5; }
+  body[data-target="smb"]{ --accent:#c1541f; --accent-dark:#8a3b14; --accent-soft:#fbe9dd; }
+
+  *{ box-sizing:border-box; }
+  html,body{ margin:0; padding:0; }
+  body{
+    background:var(--bg); color:var(--ink);
+    font-family:-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Malgun Gothic",sans-serif;
+    line-height:1.55; -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  .wrap{ max-width:640px; margin:0 auto; padding:20px 18px 64px; }
+  [hidden]{ display:none!important; }
+
+  .brand{ display:flex; align-items:center; justify-content:space-between; padding:10px 2px 18px; }
+  .brand-mark{ font-size:13px; color:var(--sub); font-weight:600; letter-spacing:.02em; }
+  .brand-mark b{ color:var(--ink); }
+
+  h1{ font-size:23px; line-height:1.35; margin:0 0 10px; font-weight:800; letter-spacing:-.01em; }
+  h2{ font-size:19px; line-height:1.4; margin:0 0 10px; font-weight:800; }
+  p{ margin:0 0 12px; color:var(--sub); }
+  .lead-text{ color:var(--ink); font-size:16px; }
+
+  .card{ background:var(--card); border:1px solid var(--line); border-radius:var(--radius); padding:20px; box-shadow:0 1px 2px rgba(20,20,30,.04); }
+  .card + .card{ margin-top:14px; }
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    width:100%; padding:15px 18px; border-radius:12px; border:none; cursor:pointer;
+    font-size:16px; font-weight:700; font-family:inherit; transition:transform .05s ease, opacity .15s ease;
+  }
+  .btn:active{ transform:scale(.98); }
+  .btn-primary{ background:var(--accent); color:#fff; }
+  .btn-primary:hover{ background:var(--accent-dark); }
+  .btn-ghost{ background:var(--accent-soft); color:var(--accent-dark); }
+  .btn-outline{ background:#fff; color:var(--ink); border:1px solid var(--line); }
+  .btn[disabled]{ opacity:.5; cursor:not-allowed; }
+  .btn-sm{ width:auto; padding:9px 14px; font-size:13px; border-radius:9px; }
+
+  .hint{ text-align:center; font-size:12.5px; color:var(--sub); margin-top:10px; }
+
+  /* STEP0 target cards */
+  .target-grid{ display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:18px; }
+  @media (max-width:420px){ .target-grid{ grid-template-columns:1fr; } }
+  .target-card{
+    text-align:left; background:var(--card); border:1.5px solid var(--line); border-radius:var(--radius);
+    padding:16px; cursor:pointer; font-family:inherit;
+  }
+  .target-card:hover{ border-color:var(--accent); }
+  .target-card .icon{ font-size:26px; display:block; margin-bottom:8px; }
+  .target-card .label{ font-weight:800; font-size:15px; margin-bottom:4px; }
+  .target-card .teaser{ font-size:12.5px; color:var(--sub); }
+
+  /* STEP1 landing blocks */
+  .hook-block{ margin-bottom:14px; }
+  .hook-tag{ display:inline-block; font-size:11px; font-weight:800; color:var(--accent-dark); background:var(--accent-soft); border-radius:100px; padding:3px 10px; margin-bottom:8px; letter-spacing:.02em; }
+  .hook-text{ font-size:16.5px; color:var(--ink); font-weight:600; line-height:1.55; }
+  .discover-list{ list-style:none; margin:8px 0 0; padding:0; }
+  .discover-list li{ display:flex; gap:10px; padding:9px 0; border-top:1px solid var(--line); font-size:14.5px; color:var(--ink); }
+  .discover-list li:first-child{ border-top:none; }
+  .discover-list b{ color:var(--accent-dark); flex:none; }
+  .closing-quote{ margin-top:16px; padding:14px 16px; background:var(--accent-soft); border-radius:12px; font-size:14.5px; color:var(--accent-dark); font-weight:600; font-style:italic; }
+  .badges{ display:flex; gap:8px; justify-content:center; margin-top:12px; flex-wrap:wrap; }
+  .badge{ font-size:12px; color:var(--sub); background:var(--accent-soft); padding:5px 10px; border-radius:100px; }
+
+  /* STEP2 quiz */
+  .progress-row{ display:flex; align-items:center; gap:10px; margin-bottom:16px; }
+  .progress-track{ flex:1; height:6px; background:var(--line); border-radius:100px; overflow:hidden; }
+  .progress-fill{ height:100%; background:var(--accent); border-radius:100px; transition:width .25s ease; }
+  .progress-num{ font-size:12.5px; color:var(--sub); font-weight:700; white-space:nowrap; }
+  .axis-tag{ font-size:12px; font-weight:800; color:var(--accent-dark); margin-bottom:6px; }
+  .axis-hook{ font-size:13.5px; color:var(--sub); margin-bottom:14px; padding-bottom:14px; border-bottom:1px dashed var(--line); }
+  .q-text{ font-size:18px; font-weight:700; line-height:1.5; margin-bottom:20px; }
+  .answer-row{ display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+  .answer-btn{ padding:16px 6px; border-radius:12px; border:1.5px solid var(--line); background:#fff; font-family:inherit; font-weight:700; font-size:14.5px; cursor:pointer; }
+  .answer-btn.yes:hover{ border-color:var(--good); color:var(--good); }
+  .answer-btn.no:hover{ border-color:var(--danger); color:var(--danger); }
+  .answer-btn.unknown:hover{ border-color:var(--sub); }
+  .unknown-note{ text-align:center; font-size:12px; color:var(--sub); margin-top:10px; }
+  .back-link{ background:none; border:none; color:var(--sub); font-size:13px; cursor:pointer; padding:6px 0 14px; font-family:inherit; }
+
+  .toast{
+    position:fixed; left:50%; bottom:24px; transform:translate(-50%,10px); opacity:0;
+    background:var(--accent-dark); color:#fff; padding:12px 18px; border-radius:100px; font-size:13.5px;
+    font-weight:600; box-shadow:0 8px 20px rgba(0,0,0,.18); transition:opacity .25s ease, transform .25s ease;
+    max-width:88vw; text-align:center; z-index:50; pointer-events:none;
+  }
+  .toast.show{ opacity:1; transform:translate(-50%,0); }
+
+  /* STEP3 processing */
+  .processing{ text-align:center; padding:56px 10px 20px; }
+  .spinner{ width:52px; height:52px; border-radius:50%; border:4px solid var(--accent-soft); border-top-color:var(--accent); margin:0 auto 26px; animation:spin 1s linear infinite; }
+  @keyframes spin{ to{ transform:rotate(360deg); } }
+  .proc-line{ font-size:15px; color:var(--sub); min-height:22px; font-weight:600; }
+  .proc-warn{ margin-top:24px; font-size:13px; color:var(--sub); font-style:italic; }
+
+  /* STEP4 report */
+  .score-hero{ text-align:center; padding:6px 0 4px; }
+  .score-num{ font-size:56px; font-weight:900; color:var(--accent-dark); line-height:1; letter-spacing:-.02em; }
+  .score-num span{ font-size:22px; color:var(--sub); font-weight:700; }
+  .grade-pill{ display:inline-block; margin-top:10px; font-size:13px; font-weight:800; padding:5px 14px; border-radius:100px; background:var(--accent-soft); color:var(--accent-dark); }
+  .radar-wrap{ display:flex; justify-content:center; margin:18px 0 4px; }
+  canvas#radar{ max-width:100%; }
+  .axis-legend{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; margin-top:8px; font-size:12.5px; }
+  .axis-legend div{ display:flex; justify-content:space-between; color:var(--sub); border-bottom:1px dotted var(--line); padding:4px 0; }
+  .axis-legend b{ color:var(--ink); }
+
+  .section-title{ font-size:12.5px; font-weight:800; color:var(--accent-dark); letter-spacing:.03em; margin-bottom:8px; text-transform:uppercase; }
+  .cause-box{ background:var(--accent-soft); border-radius:12px; padding:14px 16px; font-size:14.5px; color:var(--ink); }
+  .bench-row{ display:flex; align-items:center; justify-content:space-between; margin:12px 0; }
+  .bench-bar-wrap{ background:var(--bg); border-radius:100px; height:10px; overflow:hidden; margin-top:6px; }
+  .bench-bar{ height:100%; border-radius:100px; }
+  .bench-label{ font-size:13px; color:var(--sub); display:flex; justify-content:space-between; margin-bottom:2px; }
+  .trait-list{ list-style:none; margin:10px 0 0; padding:0; font-size:14px; }
+  .trait-list li{ padding:7px 0; display:flex; gap:8px; }
+  .trait-list li::before{ content:"✓"; color:var(--good); font-weight:900; }
+
+  .scene-box{ font-size:15px; color:var(--ink); border-left:3px solid var(--accent); padding-left:14px; margin:6px 0; }
+
+  .ba-row{ display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:8px; }
+  .ba-frame{ border:1px solid var(--line); border-radius:10px; overflow:hidden; }
+  .ba-frame .ba-head{ font-size:11px; font-weight:800; padding:6px 8px; }
+  .ba-frame.before .ba-head{ background:#f1eee9; color:#8a8378; }
+  .ba-frame.after .ba-head{ background:var(--accent-soft); color:var(--accent-dark); }
+  .ba-body{ padding:10px 8px; height:112px; display:flex; flex-direction:column; gap:6px; justify-content:center; }
+  .sk{ background:#e7e4de; border-radius:4px; height:8px; }
+  .ba-frame.before .sk{ background:#e7e4de; }
+  .ba-frame.after .sk{ background:var(--accent-soft); }
+  .ba-frame.after .sk.cta{ background:var(--accent); height:16px; width:60%; border-radius:6px; }
+  .ba-note{ font-size:11.5px; color:var(--sub); text-align:center; margin-top:6px; }
+
+  .urgency{ background:#fbeee9; border:1px solid #f0d3c6; color:var(--accent-dark); border-radius:12px; padding:12px 14px; font-size:13.5px; font-weight:600; }
+
+  .profile-card{ display:flex; gap:12px; align-items:flex-start; }
+  .profile-photo{ width:46px; height:46px; border-radius:50%; background:var(--accent); color:#fff; display:flex; align-items:center; justify-content:center; font-weight:800; flex:none; }
+  .profile-name{ font-weight:800; font-size:14.5px; }
+  .profile-role{ font-size:12.5px; color:var(--sub); margin-top:2px; }
+  .profile-note{ font-size:13.5px; margin-top:8px; }
+
+  /* lead form */
+  .field{ margin-bottom:12px; }
+  .field label{ display:block; font-size:13px; font-weight:700; margin-bottom:6px; }
+  .field input, .field select{
+    width:100%; padding:12px 13px; border:1.5px solid var(--line); border-radius:10px;
+    font-size:15px; font-family:inherit; background:#fff;
+  }
+  .field input:focus, .field select:focus{ outline:none; border-color:var(--accent); }
+  .field-error{ font-size:12px; color:var(--danger); margin-top:5px; display:none; }
+  .field.has-error input{ border-color:var(--danger); }
+  .field.has-error .field-error{ display:block; }
+  .form-msg{ font-size:13px; margin-top:10px; text-align:center; }
+  .form-msg.error{ color:var(--danger); }
+  .form-msg.ok{ color:var(--good); }
+
+  .unlocked{ display:none; }
+  .unlocked.show{ display:block; }
+  .locked-teaser{ text-align:center; padding:8px 0; }
+  .locked-teaser .lock{ font-size:26px; }
+
+  .step-nav{ margin-top:22px; }
+  .footer-note{ text-align:center; font-size:11.5px; color:var(--sub); margin-top:28px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <div class="brand-mark">📊 <b>홈페이지 진단</b> · 3분 무료</div>
+  </div>
+
+  <!-- loading -->
+  <div id="loading" class="card"><p style="margin:0;text-align:center;">불러오는 중…</p></div>
+
+  <!-- STEP 0 -->
+  <section id="step0" hidden>
+    <h1>우리 홈페이지, 왜 사람이 안 올까요?</h1>
+    <p>대상에 따라 원인이 완전히 다릅니다. 해당하는 곳을 선택해주세요.</p>
+    <div id="targetGrid" class="target-grid"></div>
+  </section>
+
+  <!-- STEP 1 -->
+  <section id="step1" hidden>
+    <div class="card">
+      <div class="hook-block">
+        <span class="hook-tag">대조</span>
+        <div class="hook-text" id="l-contrast"></div>
+      </div>
+      <div class="hook-block">
+        <span class="hook-tag">모순</span>
+        <div class="hook-text" id="l-paradox"></div>
+      </div>
+      <div class="hook-block">
+        <span class="hook-tag">놓친 사람</span>
+        <div class="hook-text" id="l-loss"></div>
+      </div>
+      <div class="section-title" style="margin-top:16px;">진단하면 알 수 있는 것</div>
+      <ul class="discover-list" id="l-discover"></ul>
+      <div class="closing-quote" id="l-closing"></div>
+    </div>
+    <div class="card step-nav">
+      <button class="btn btn-primary" id="startQuizBtn">3분 진단 시작하기</button>
+      <div class="badges">
+        <span class="badge">무료</span><span class="badge">로그인 없음</span><span class="badge">결과 즉시 확인</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- STEP 2 -->
+  <section id="step2" hidden>
+    <div class="card">
+      <button class="back-link" id="backQBtn">← 이전 문항</button>
+      <div class="progress-row">
+        <div class="progress-track"><div class="progress-fill" id="qProgressFill"></div></div>
+        <div class="progress-num" id="qProgressNum"></div>
+      </div>
+      <div class="axis-tag" id="qAxisTag"></div>
+      <div class="axis-hook" id="qAxisHook"></div>
+      <div class="q-text" id="qText"></div>
+      <div class="answer-row">
+        <button class="answer-btn yes" data-v="yes">예</button>
+        <button class="answer-btn no" data-v="no">아니오</button>
+        <button class="answer-btn unknown" data-v="unknown">모름</button>
+      </div>
+      <div class="unknown-note">모르시는 것도 결과입니다 — 방치된 부분일 가능성이 큽니다.</div>
+    </div>
+  </section>
+
+  <!-- STEP 2b: closing hook before processing -->
+  <section id="step2b" hidden>
+    <div class="card" style="text-align:center; padding:34px 20px;">
+      <div style="font-size:28px; margin-bottom:14px;">✔️</div>
+      <div class="lead-text" style="font-weight:700; font-size:17px;" id="closingHookText"></div>
+    </div>
+    <div class="card step-nav">
+      <button class="btn btn-primary" id="toProcessingBtn">결과 확인하기</button>
+    </div>
+  </section>
+
+  <!-- STEP 3 -->
+  <section id="step3" hidden>
+    <div class="card processing">
+      <div class="spinner"></div>
+      <div class="proc-line" id="procLine"></div>
+      <div class="proc-warn" id="procWarn" hidden>결과가 예상보다 낮게 나올 수 있습니다. 놀라지 마세요 — 대부분 그렇습니다.</div>
+    </div>
+  </section>
+
+  <!-- STEP 4 -->
+  <section id="step4" hidden>
+    <div class="card">
+      <div class="section-title">진단 결과</div>
+      <p class="lead-text" id="r-opening"></p>
+      <div class="score-hero">
+        <div class="score-num"><span id="r-score-prefix"></span><span id="r-score"></span><span>/100</span></div>
+        <div class="grade-pill" id="r-grade"></div>
+      </div>
+      <div class="radar-wrap"><canvas id="radar" width="280" height="280"></canvas></div>
+      <div class="axis-legend" id="r-axis-legend"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">당신의 고민 → 발견된 원인</div>
+      <div class="cause-box" id="r-cause"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">비슷한 규모와 비교</div>
+      <div class="bench-row" style="display:block;">
+        <div class="bench-label"><span id="r-bench-you-label">귀 기관</span><b id="r-bench-you-score"></b></div>
+        <div class="bench-bar-wrap"><div class="bench-bar" id="r-bench-you-bar" style="background:var(--accent);"></div></div>
+        <div class="bench-label" style="margin-top:10px;"><span id="r-bench-avg-label"></span><b id="r-bench-avg-score"></b></div>
+        <div class="bench-bar-wrap"><div class="bench-bar" id="r-bench-avg-bar" style="background:#c7ccd4;"></div></div>
+      </div>
+      <div class="section-title" style="margin-top:16px;">상위권의 공통점</div>
+      <ul class="trait-list" id="r-traits"></ul>
+    </div>
+
+    <div class="card">
+      <div class="section-title">놓치고 있는 것</div>
+      <div class="scene-box" id="r-scene"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">개선 후 예시 이미지</div>
+      <div class="ba-row">
+        <div class="ba-frame before">
+          <div class="ba-head">BEFORE (현재 추정)</div>
+          <div class="ba-body"><div class="sk" style="width:80%"></div><div class="sk" style="width:60%"></div><div class="sk" style="width:70%"></div><div class="sk" style="width:40%"></div></div>
+        </div>
+        <div class="ba-frame after">
+          <div class="ba-head">AFTER (개선 예시)</div>
+          <div class="ba-body"><div class="sk" style="width:55%"></div><div class="sk" style="width:75%"></div><div class="sk cta"></div></div>
+        </div>
+      </div>
+      <div class="ba-note">실제 개선 시안은 아래 신청 후 맞춤 제작해 드립니다.</div>
+    </div>
+
+    <div class="card">
+      <div class="urgency" id="r-urgency"></div>
+    </div>
+
+    <!-- CTA1: lead gate -->
+    <div class="card" id="leadCard">
+      <div class="section-title">개선 시안 미리 보기</div>
+      <div id="lockedTeaser" class="locked-teaser">
+        <div class="lock">🔒</div>
+        <p style="margin-top:6px;">연락처를 남기면 맞춤 개선 포인트를 바로 보여드립니다.</p>
+      </div>
+      <form id="leadForm">
+        <div class="field" id="f-name">
+          <label>이름 *</label>
+          <input type="text" name="name" maxlength="30" placeholder="홍길동">
+          <div class="field-error"></div>
+        </div>
+        <div class="field" id="f-phone">
+          <label>연락처 *</label>
+          <input type="tel" name="phone" maxlength="20" placeholder="010-0000-0000">
+          <div class="field-error"></div>
+        </div>
+        <div class="field" id="f-org">
+          <label>기관명 (선택)</label>
+          <input type="text" name="org" maxlength="100" id="orgInput">
+          <div class="field-error"></div>
+        </div>
+        <div class="field" id="f-interest">
+          <label>관심 분야 (선택)</label>
+          <select name="interest" id="interestSelect">
+            <option value="개선 시안 미리보기">개선 시안 미리보기</option>
+            <option value="15분 무료 진단 상담">15분 무료 진단 상담</option>
+            <option value="견적 문의">견적 문의</option>
+          </select>
+        </div>
+        <button class="btn btn-primary" type="submit" id="leadSubmitBtn">개선 시안 미리 보기</button>
+        <div class="form-msg" id="leadMsg"></div>
+      </form>
+
+      <div class="unlocked" id="unlockedPanel">
+        <div class="section-title">우리가 제안하는 개선 포인트</div>
+        <ul class="trait-list" id="r-recommend"></ul>
+        <p style="margin-top:10px; font-size:13px;">신청 감사합니다. 24시간 내로 어떤 항목이 가장 걱정되셨는지 짧게 여쭙는 연락을 드립니다.</p>
+      </div>
+    </div>
+
+    <!-- CTA2 -->
+    <div class="card">
+      <button class="btn btn-ghost" id="consultBtn">15분 무료 진단 상담 신청</button>
+    </div>
+
+    <!-- Profile -->
+    <div class="card">
+      <div class="profile-card">
+        <div class="profile-photo">JW</div>
+        <div>
+          <div class="profile-name">정재원</div>
+          <div class="profile-role">IT 융합 박사 · IT 운영 국장 · 現 비영리단체 사무총장</div>
+          <div class="profile-note" id="r-profile-note"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="footer-note">이 진단은 자가 응답 기반 약식 진단이며, 실제 상담에서 더 정확히 확인해 드립니다.</div>
+  </section>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(function(){
+  "use strict";
+
+  var STATE = {
+    config:null, target:null, questions:[], answers:{}, qIndex:0,
+    report:null, answeredCount:0,
+  };
+
+  var el = function(id){ return document.getElementById(id); };
+  var show = function(id){ ['loading','step0','step1','step2','step2b','step3','step4'].forEach(function(s){ el(s).hidden = (s!==id); }); window.scrollTo(0,0); };
+
+  function fetchConfig(){
+    return fetch('/api/diagnosis/config').then(function(r){ return r.json(); }).then(function(j){
+      if(!j.ok) throw new Error('config load failed');
+      STATE.config = j;
+      return j;
+    });
+  }
+
+  // ---------------------------------------------------------------------
+  // STEP 0
+  // ---------------------------------------------------------------------
+  function renderStep0(){
+    var grid = el('targetGrid');
+    grid.innerHTML = '';
+    var targets = STATE.config.targets;
+    Object.keys(targets).sort(function(a,b){ return targets[a].order - targets[b].order; }).forEach(function(key){
+      var t = targets[key];
+      var btn = document.createElement('button');
+      btn.className = 'target-card';
+      btn.innerHTML = '<span class="icon">'+t.icon+'</span><div class="label">'+t.label+'</div><div class="teaser">"'+t.teaser+'"</div>';
+      btn.addEventListener('click', function(){ selectTarget(key); });
+      grid.appendChild(btn);
+    });
+    show('step0');
+  }
+
+  function selectTarget(key){
+    STATE.target = key;
+    try{ sessionStorage.setItem('diagnosis_target', key); }catch(e){}
+    document.body.setAttribute('data-target', key);
+    renderStep1();
+  }
+
+  // ---------------------------------------------------------------------
+  // STEP 1 — 훅 랜딩
+  // ---------------------------------------------------------------------
+  function renderStep1(){
+    var t = STATE.config.targets[STATE.target];
+    el('l-contrast').textContent = t.landing.contrast;
+    el('l-paradox').textContent = t.landing.paradox;
+    el('l-loss').textContent = t.landing.loss;
+    var list = el('l-discover'); list.innerHTML = '';
+    t.landing.discover.forEach(function(txt, i){
+      var li = document.createElement('li');
+      li.innerHTML = '<b>'+(i+1)+'</b><span>'+txt+'</span>';
+      list.appendChild(li);
+    });
+    el('l-closing').textContent = '"' + t.landing.closing + '"';
+    show('step1');
+  }
+
+  el('startQuizBtn').addEventListener('click', function(){
+    startQuiz();
+  });
+
+  // ---------------------------------------------------------------------
+  // STEP 2 — 문항
+  // ---------------------------------------------------------------------
+  function buildQuestionList(targetKey){
+    var t = STATE.config.targets[targetKey];
+    var list = [];
+    STATE.config.axes.forEach(function(axis){
+      var texts = t.axisQuestions[axis.id] || [];
+      texts.forEach(function(text, index){
+        list.push({ axisId:axis.id, axisLabel:axis.label, index:index, text:text, key:axis.id+':'+index, hook:t.axisHooks[axis.id] });
+      });
+    });
+    return list;
+  }
+
+  function startQuiz(){
+    STATE.questions = buildQuestionList(STATE.target);
+    STATE.answers = {};
+    STATE.qIndex = 0;
+    STATE.answeredCount = 0;
+    STATE.advancing = false;
+    renderQuestion();
+    show('step2');
+  }
+
+  function renderQuestion(){
+    STATE.advancing = false;
+    var q = STATE.questions[STATE.qIndex];
+    var total = STATE.questions.length;
+    el('qProgressFill').style.width = Math.round((STATE.qIndex/total)*100) + '%';
+    el('qProgressNum').textContent = (STATE.qIndex+1) + ' / ' + total;
+    el('qAxisTag').textContent = q.axisLabel;
+    el('qAxisHook').textContent = q.hook;
+    el('qText').textContent = q.text;
+    el('backQBtn').style.visibility = STATE.qIndex===0 ? 'hidden' : 'visible';
+
+    var existing = STATE.answers[q.key];
+    Array.prototype.forEach.call(document.querySelectorAll('.answer-btn'), function(b){
+      b.classList.toggle('selected', b.getAttribute('data-v')===existing);
+      b.style.borderColor = b.getAttribute('data-v')===existing ? 'var(--accent)' : '';
+    });
+  }
+
+  Array.prototype.forEach.call(document.querySelectorAll('.answer-btn'), function(btn){
+    btn.addEventListener('click', function(){ handleAnswer(btn.getAttribute('data-v')); });
+  });
+
+  el('backQBtn').addEventListener('click', function(){
+    if(STATE.advancing) return;
+    if(STATE.qIndex>0){ STATE.qIndex--; renderQuestion(); }
+  });
+
+  // 같은 문항에서 연타(더블클릭)해도 다음 문항으로 두 번 넘어가지 않도록 잠근다.
+  // (잠그지 않으면 setTimeout이 두 번 걸려 문항이 하나 건너뛰어지고, 답이 빠져 제출이 실패한다)
+  function handleAnswer(value){
+    if(STATE.advancing) return;
+    var q = STATE.questions[STATE.qIndex];
+    var isNew = STATE.answers[q.key]==null;
+    STATE.answers[q.key] = value;
+    if(isNew) STATE.answeredCount++;
+
+    var isLast = STATE.qIndex === STATE.questions.length-1;
+    var showFeedback = isNew && STATE.answeredCount>0 && STATE.answeredCount % 4 === 0;
+
+    if(showFeedback) showMicroFeedback();
+
+    STATE.advancing = true;
+    setTimeout(function(){
+      if(isLast){ renderClosingHook(); }
+      else{ STATE.qIndex++; renderQuestion(); }
+    }, showFeedback ? 550 : 180);
+  }
+
+  function runningScorePct(){
+    var yesLike = 0, answered = 0;
+    Object.keys(STATE.answers).forEach(function(k){
+      answered++;
+      var v = STATE.answers[k];
+      if(v==='yes') yesLike += 2; else if(v==='no') yesLike += 1;
+    });
+    if(!answered) return 100;
+    return Math.round((yesLike/(answered*2))*100);
+  }
+
+  function showMicroFeedback(){
+    var t = STATE.config.targets[STATE.target];
+    var pct = runningScorePct();
+    var msg = pct < 70
+      ? '지금까지 응답 기준, ' + t.scaleNoun + ' 평균보다 낮습니다.'
+      : '지금까지 응답 기준, 평균과 비슷한 수준입니다. 나머지도 확인해볼게요.';
+    var toast = el('toast');
+    toast.textContent = msg;
+    toast.classList.add('show');
+    setTimeout(function(){ toast.classList.remove('show'); }, 2200);
+  }
+
+  function renderClosingHook(){
+    var t = STATE.config.targets[STATE.target];
+    el('closingHookText').textContent = '"' + t.landing.closing + '"';
+    show('step2b');
+  }
+
+  el('toProcessingBtn').addEventListener('click', function(){ runProcessing(); });
+
+  // ---------------------------------------------------------------------
+  // STEP 3 — 처리 중
+  // ---------------------------------------------------------------------
+  function runProcessing(){
+    show('step3');
+    var t = STATE.config.targets[STATE.target];
+    var lines = [
+      '홈페이지 첫 화면을 분석하는 중…',
+      t.scaleNoun + ' 평균과 비교하는 중…',
+      '개선 우선순위를 정리하는 중…',
+    ];
+    el('procWarn').hidden = true;
+    var i = 0;
+    function step(){
+      el('procLine').textContent = lines[i];
+      i++;
+      if(i < lines.length){ setTimeout(step, 1100); }
+      else{
+        setTimeout(function(){ el('procWarn').hidden = false; }, 900);
+        setTimeout(function(){ renderReport(); }, 2000);
+      }
+    }
+    step();
+  }
+
+  // ---------------------------------------------------------------------
+  // STEP 4 — 리포트
+  // ---------------------------------------------------------------------
+  function computeReport(targetKey, answers){
+    var t = STATE.config.targets[targetKey];
+    var axisScores = {}; var sum = 0;
+    STATE.config.axes.forEach(function(axis){
+      var texts = t.axisQuestions[axis.id] || [];
+      var s = 0;
+      texts.forEach(function(_, index){
+        var v = answers[axis.id+':'+index];
+        s += v==='yes' ? 2 : v==='no' ? 1 : 0;
+      });
+      var max = texts.length*2;
+      var pct = max ? Math.round((s/max)*100) : 0;
+      axisScores[axis.id] = pct;
+      sum += pct;
+    });
+    var totalScore = Math.round(sum/STATE.config.axes.length);
+    var sortedAxes = STATE.config.axes.slice().sort(function(a,b){ return axisScores[a.id]-axisScores[b.id]; });
+    var grade = STATE.config.gradeBands.find(function(b){ return totalScore>=b.min; }).grade;
+    return { totalScore:totalScore, grade:grade, axisScores:axisScores, weakestAxis:sortedAxes[0].id, secondWeakestAxis:sortedAxes[1].id, benchmark:t.benchmark };
+  }
+
+  function renderReport(){
+    var t = STATE.config.targets[STATE.target];
+    var report = computeReport(STATE.target, STATE.answers);
+    STATE.report = report;
+
+    el('r-opening').textContent = t.report.opening;
+    el('r-score').textContent = report.totalScore;
+    el('r-score-prefix').textContent = '';
+    var gradeLabel = { A:'A등급 · 우수', B:'B등급 · 양호', C:'C등급 · 보통', D:'D등급 · 미흡', F:'F등급 · 위험' }[report.grade] || report.grade;
+    el('r-grade').textContent = gradeLabel;
+
+    drawRadar(report.axisScores);
+    renderAxisLegend(report.axisScores);
+
+    var weakest = STATE.config.axes.find(function(a){ return a.id===report.weakestAxis; });
+    el('r-cause').textContent = '앞서 궁금해하신 부분, 진단 결과와 이어집니다. 가장 취약한 항목은 "' + weakest.label + '"(' + report.axisScores[report.weakestAxis] + '점)입니다. ' + t.axisHooks[report.weakestAxis];
+
+    el('r-bench-you-label').textContent = '귀 ' + t.noun;
+    el('r-bench-you-score').textContent = report.totalScore + '점';
+    el('r-bench-you-bar').style.width = report.totalScore + '%';
+    el('r-bench-avg-label').textContent = t.scaleNoun + ' 평균';
+    el('r-bench-avg-score').textContent = report.benchmark + '점';
+    el('r-bench-avg-bar').style.width = report.benchmark + '%';
+
+    var traitList = el('r-traits'); traitList.innerHTML = '';
+    t.report.traits.forEach(function(txt){
+      var li = document.createElement('li'); li.textContent = txt; traitList.appendChild(li);
+    });
+
+    el('r-scene').textContent = t.report.scene;
+    el('r-urgency').textContent = '이 상태가 6개월 더 지속되면, 놓치는 ' + t.report.urgencyUnit + ' 수는 계속 쌓입니다. 지금 발견한 것만으로 이미 절반은 해결된 것입니다.';
+
+    var profileNotes = {
+      church: '교회·비영리 현장을 직접 겪어본 입장에서, 같은 눈높이로 짚어드립니다.',
+      nonprofit: '現 비영리단체 사무총장으로서, 같은 고민을 안고 있는 입장에서 함께 짚어드립니다.',
+      professional: 'IT 운영 조직을 이끌어온 경험으로, 신뢰가 필요한 전문직 홈페이지의 급소를 짚어드립니다.',
+      smb: '현장에서 직접 온라인 운영을 맡아본 경험으로, 실질적으로 도움이 되는 것만 짚어드립니다.',
+    };
+    el('r-profile-note').textContent = profileNotes[STATE.target] || '';
+
+    // 리드 폼 리셋 + 레이블 조정
+    document.getElementById('leadForm').reset();
+    el('interestSelect').value = '개선 시안 미리보기';
+    el('unlockedPanel').classList.remove('show');
+    el('leadForm').style.display = '';
+    el('lockedTeaser').style.display = '';
+    el('leadMsg').textContent = '';
+    el('leadMsg').className = 'form-msg';
+
+    show('step4');
+  }
+
+  function renderAxisLegend(axisScores){
+    var box = el('r-axis-legend'); box.innerHTML = '';
+    STATE.config.axes.forEach(function(axis){
+      var row = document.createElement('div');
+      row.innerHTML = '<span>'+axis.label+'</span><b>'+axisScores[axis.id]+'점</b>';
+      box.appendChild(row);
+    });
+  }
+
+  function drawRadar(axisScores){
+    var canvas = el('radar');
+    var dpr = window.devicePixelRatio || 1;
+    var size = 280;
+    canvas.width = size*dpr; canvas.height = size*dpr;
+    canvas.style.width = size+'px'; canvas.style.height = size+'px';
+    var ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,size,size);
+
+    var axes = STATE.config.axes;
+    var n = axes.length;
+    var cx = size/2, cy = size/2, R = size/2 - 38;
+    var accent = getComputedStyle(document.body).getPropertyValue('--accent').trim() || '#334155';
+
+    function pt(i, r){
+      var angle = -Math.PI/2 + i*(2*Math.PI/n);
+      return [cx + r*Math.cos(angle), cy + r*Math.sin(angle)];
+    }
+
+    // 그리드 링
+    ctx.strokeStyle = '#e4e7ec'; ctx.lineWidth = 1;
+    [0.25,0.5,0.75,1].forEach(function(f){
+      ctx.beginPath();
+      for(var i=0;i<n;i++){
+        var p = pt(i, R*f);
+        if(i===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+      }
+      ctx.closePath(); ctx.stroke();
+    });
+    // 축 선 + 라벨
+    ctx.fillStyle = '#5b6472'; ctx.font = '11px -apple-system,sans-serif'; ctx.textAlign='center'; ctx.textBaseline='middle';
+    for(var i=0;i<n;i++){
+      var p0 = pt(i,0), p1 = pt(i,R);
+      ctx.beginPath(); ctx.moveTo(p0[0],p0[1]); ctx.lineTo(p1[0],p1[1]); ctx.stroke();
+      var lp = pt(i, R+18);
+      ctx.fillText(axes[i].label, lp[0], lp[1]);
+    }
+    // 점수 폴리곤
+    ctx.beginPath();
+    for(var j=0;j<n;j++){
+      var val = axisScores[axes[j].id]/100;
+      var p = pt(j, R*val);
+      if(j===0) ctx.moveTo(p[0],p[1]); else ctx.lineTo(p[0],p[1]);
+    }
+    ctx.closePath();
+    ctx.fillStyle = accent + '33';
+    ctx.strokeStyle = accent; ctx.lineWidth = 2;
+    ctx.fill(); ctx.stroke();
+    for(var k=0;k<n;k++){
+      var val2 = axisScores[axes[k].id]/100;
+      var pp = pt(k, R*val2);
+      ctx.beginPath(); ctx.arc(pp[0],pp[1],3,0,Math.PI*2); ctx.fillStyle = accent; ctx.fill();
+    }
+  }
+
+  // ---------------------------------------------------------------------
+  // CTA1 — 리드 캡처
+  // ---------------------------------------------------------------------
+  el('leadForm').addEventListener('submit', function(e){
+    e.preventDefault();
+    submitLead();
+  });
+
+  el('consultBtn').addEventListener('click', function(){
+    el('interestSelect').value = '15분 무료 진단 상담';
+    el('leadSubmitBtn').textContent = '15분 무료 진단 상담 신청';
+    el('leadCard').scrollIntoView({behavior:'smooth', block:'start'});
+    var nameInput = document.querySelector('#leadForm input[name=name]');
+    if(nameInput) nameInput.focus();
+  });
+
+  function clearFieldErrors(){
+    ['f-name','f-phone','f-org'].forEach(function(id){
+      el(id).classList.remove('has-error');
+      el(id).querySelector('.field-error').textContent = '';
+    });
+  }
+
+  function submitLead(){
+    clearFieldErrors();
+    var msg = el('leadMsg');
+    msg.textContent=''; msg.className='form-msg';
+
+    var form = el('leadForm');
+    var lead = {
+      name: form.name.value.trim(),
+      phone: form.phone.value.trim(),
+      org: form.org.value.trim(),
+      interest: form.interest.value,
+    };
+
+    var btn = el('leadSubmitBtn');
+    btn.disabled = true; btn.textContent = '전송 중…';
+
+    fetch('/api/diagnosis/submit', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ target: STATE.target, answers: STATE.answers, lead: lead }),
+    }).then(function(r){ return r.json().then(function(j){ return {status:r.status, body:j}; }); })
+      .then(function(res){
+        if(res.body && res.body.ok){
+          unlockPreview();
+        } else {
+          btn.disabled = false; btn.textContent = '개선 시안 미리 보기';
+          var err = res.body && res.body.error;
+          if(err==='VALIDATION' && res.body.fields){
+            Object.keys(res.body.fields).forEach(function(key){
+              var box = el('f-'+key);
+              if(box){ box.classList.add('has-error'); box.querySelector('.field-error').textContent = res.body.fields[key]; }
+            });
+            msg.textContent = '입력값을 확인해주세요.'; msg.className='form-msg error';
+          } else if(err==='RATE_LIMITED'){
+            msg.textContent = '잠시 후 다시 시도해주세요.'; msg.className='form-msg error';
+          } else {
+            msg.textContent = '잠시 문제가 생겼어요. 다시 시도해주세요.'; msg.className='form-msg error';
+          }
+        }
+      }).catch(function(){
+        btn.disabled = false; btn.textContent = '개선 시안 미리 보기';
+        msg.textContent = '네트워크 오류입니다. 다시 시도해주세요.'; msg.className='form-msg error';
+      });
+  }
+
+  function unlockPreview(){
+    el('leadForm').style.display = 'none';
+    el('lockedTeaser').style.display = 'none';
+    var recList = el('r-recommend'); recList.innerHTML = '';
+    var t = STATE.config.targets[STATE.target];
+    [STATE.report.weakestAxis, STATE.report.secondWeakestAxis].forEach(function(axisId){
+      var li = document.createElement('li');
+      li.textContent = t.axisHooks[axisId];
+      recList.appendChild(li);
+    });
+    el('unlockedPanel').classList.add('show');
+    el('leadMsg').textContent = '';
+  }
+
+  // ---------------------------------------------------------------------
+  // 초기화
+  // ---------------------------------------------------------------------
+  function init(){
+    fetchConfig().then(function(){
+      var params = new URLSearchParams(window.location.search);
+      var urlTarget = params.get('target');
+      if(urlTarget && STATE.config.targets[urlTarget]){
+        STATE.target = urlTarget;
+        document.body.setAttribute('data-target', urlTarget);
+        renderStep1();
+      } else {
+        renderStep0();
+      }
+    }).catch(function(){
+      el('loading').innerHTML = '<p style="margin:0;text-align:center;">불러오지 못했습니다. 새로고침해주세요.</p>';
+    });
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>

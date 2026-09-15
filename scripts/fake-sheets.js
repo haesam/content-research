@@ -8,6 +8,7 @@ function createFakeSheets(seed = {}) {
     // 기본값: 시트 양식 초기화 직후와 같은 상태 (내장 3개 방). seed.rooms 로 바꿀 수 있다.
     rooms: seed.rooms || DEFAULT_ROOMS.map((r) => ({ ...r })),
     submissions: seed.submissions || [],
+    diagnosisLeads: seed.diagnosisLeads || [],
     setupCalls: [],
   };
 
@@ -26,6 +27,10 @@ function createFakeSheets(seed = {}) {
     async appendSurveyResponse(row) { state.submissions.push(row.slice()); },
     async setupSurveySheet() { state.setupCalls.push('survey'); state.tabsReady = true; return { spreadsheetId: 'fake-survey', created: ['설문응답', '챌린지링크'], renamed: [], headersWritten: ['설문응답', '챌린지링크'], untouched: [] }; },
     async checkSurveySheet() { return { ok: true, spreadsheetId: 'fake-survey', checks: [{ name: '가짜 시트', ok: true, detail: '로컬 모드' }], fix: [] }; },
+    // 홈페이지 진단 리드
+    async appendDiagnosisLead(row) { state.diagnosisLeads.push(row.slice()); },
+    async setupDiagnosisSheet() { state.setupCalls.push('diagnosis'); state.diagnosisTabReady = true; return { spreadsheetId: 'fake-diagnosis', created: ['홈페이지진단리드'], renamed: [], headersWritten: ['홈페이지진단리드'], untouched: [] }; },
+    async checkDiagnosisSheet() { return { ok: true, spreadsheetId: 'fake-diagnosis', checks: [{ name: '가짜 시트', ok: true, detail: '로컬 모드' }], fix: [] }; },
     // 기존 파이프라인 함수(사용 안 함)
     async readConfigKeywords() { return []; },
     async appendContentRows() {},
