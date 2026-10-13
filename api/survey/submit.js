@@ -1,13 +1,14 @@
 // POST /api/survey/submit
 // 요청: { name, nickname, cohort, phone, ageGroup, gender, region, major, promoLink,
-//         educationHelp, currentConcern, effortAndLimit, communityExpectation, futureCommitment }
-// 응답: { ok:true, alreadySubmitted, rooms: [{ name, link, password }] }
+//         educationHelp, currentConcern, effortAndLimit, communityExpectation, futureCommitment, mode? }
+// 응답: { ok:true, alreadySubmitted, updated, rooms: [{ name, link, password }] }
 //       { ok:false, error: 'VALIDATION'|'RATE_LIMITED'|'SHEET_NOT_READY'|'SERVER_ERROR', fields? }
-// 같은 연락처로 이미 제출한 경우 새 행을 추가하지 않고 단톡방 목록만 다시 돌려준다.
+// 같은 연락처로 이미 제출한 경우: mode='update'이고 성함도 같으면 기존 행을 덮어쓰고,
+// 아니면 새 행을 추가하지 않고 단톡방 목록만 다시 돌려준다.
 // 시트에 탭이 아직 없으면(초기화 전) 자동으로 탭·헤더를 만들고 이어서 저장한다.
 
 const sheets = require('../../lib/sheets');
-const { validateSurvey, buildSurveyRow, activeRooms, findExistingSubmission, DEFAULT_ROOMS } = require('../../lib/survey');
+const { validateSurvey, buildSurveyRow, activeRooms, findExistingSubmission, formatKst, DEFAULT_ROOMS } = require('../../lib/survey');
 const rate = require('../../lib/ratelimit');
 const { readJsonBody, noStore, logError } = require('../../lib/http');
 
@@ -70,13 +71,21 @@ module.exports = async function handler(req, res) {
     const rooms = await loadRooms();
 
     if (prior) {
-      return res.status(200).json({ ok: true, alreadySubmitted: true, rooms });
+      // 수정 모드: 성함까지 같은 본인일 때만 기존 행을 덮어쓴다 (제출일시는 유지, 최근 수정일시 기록)
+      const wantsUpdate = String(readJsonBody(req).mode || '') === 'update';
+      const sameName = findExistingSubmission([prior], v.values.phone, v.values.name) != null;
+      if (wantsUpdate && sameName) {
+        const row = buildSurveyRow({ values: v.values, rooms, submittedAt: prior.submittedAt, updatedAt: formatKst(new Date()) });
+        await sheets.updateSurveyResponse(prior.row, row);
+        return res.status(200).json({ ok: true, alreadySubmitted: true, updated: true, rooms });
+      }
+      return res.status(200).json({ ok: true, alreadySubmitted: true, updated: false, rooms });
     }
 
     const row = buildSurveyRow({ values: v.values, rooms, now: new Date() });
     await sheets.appendSurveyResponse(row);
 
-    return res.status(200).json({ ok: true, alreadySubmitted: false, rooms });
+    return res.status(200).json({ ok: true, alreadySubmitted: false, updated: false, rooms });
   } catch (err) {
     logError('survey/submit', err);
     // 운영자가 원인을 알 수 있도록 코드만 구분해서 돌려준다 (자세한 내용은 Vercel 로그와 /api/survey/health)

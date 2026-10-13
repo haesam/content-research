@@ -84,18 +84,48 @@ async function main() {
   if (await page.evaluate(() => localStorage.getItem('nadaun_survey_draft_v2'))) throw new Error('draft should be cleared after submit');
   await page.screenshot({ path: path.join(SHOTS, '05-done.png') });
 
-  // 같은 성함+연락처로 다시 오면 1단계 '다음'에서 바로 단톡방 안내로
+  // 같은 성함+연락처로 다시 오면 1단계 '다음'에서 선택 화면: 바로 가기 / 수정하기
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
   await page.fill('#fName', '홍 길동'); await page.fill('#fPhone', '01012345678'); await page.fill('#fCohort', '3기');
   await page.click('#nextBtn');
+  await page.waitForSelector('#choiceBox:not([hidden])');
+  if (await page.isVisible('.step[data-step="2"]')) throw new Error('survey should wait for the choice');
+  await page.screenshot({ path: path.join(SHOTS, '06-choice.png') });
+
+  // 선택 1: 바로 단톡방으로
+  await page.click('#goRoomsBtn');
   await page.waitForSelector('[data-stage="done"]:not([hidden])');
   if (!(await page.textContent('#doneTitle')).includes('다시 오셨군요')) throw new Error('returning copy missing');
   if ((await page.$$('#roomList a')).length !== 3) throw new Error('returning citizen should see rooms');
-  if (await page.isVisible('.step[data-step="2"]')) throw new Error('survey should have been skipped');
   await page.screenshot({ path: path.join(SHOTS, '06-returning.png') });
 
-  // 다른 이름이면 건너뛰지 않고 2단계로 진행 (제출 시 연락처로 중복 처리됨)
+  // 선택 2: 내용 수정 → 이전 답변이 채워지고, 제출하면 기존 행이 갱신된다
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.waitForSelector('#loader.off');
+  await page.fill('#fName', '홍길동'); await page.fill('#fPhone', '010-1234-5678'); await page.fill('#fCohort', '3기');
+  await page.click('#nextBtn');
+  await page.waitForSelector('#choiceBox:not([hidden])');
+  await page.click('#editBtn');
+  await page.waitForSelector('.step[data-step="2"]:not([hidden])');
+  if ((await page.inputValue('#fRegion')) !== '서울 마포') throw new Error('previous answers not prefilled: ' + await page.inputValue('#fRegion'));
+  await page.fill('#fRegion', '부산 해운대');
+  await page.click('#nextBtn');
+  await page.waitForSelector('.step[data-step="3"]:not([hidden])');
+  if ((await page.inputValue('#fHelp')) !== '도움된 점') throw new Error('step3 not prefilled');
+  await page.click('#nextBtn');
+  await page.waitForSelector('.step[data-step="4"]:not([hidden])');
+  if (!(await page.textContent('#submitBtn')).includes('수정하고 입장하기')) throw new Error('submit label should say 수정');
+  await page.click('#submitBtn');
+  await page.waitForSelector('[data-stage="done"]:not([hidden])');
+  if (!(await page.textContent('#doneTitle')).includes('고마워요')) throw new Error('updated copy missing: ' + await page.textContent('#doneTitle'));
+  if ((await page.$$('#roomList a')).length !== 3) throw new Error('updated citizen should see rooms');
+  await page.screenshot({ path: path.join(SHOTS, '06b-updated.png') });
+  // 서버 상태 확인: 행이 하나뿐이고 지역이 바뀌었는지 (lookup으로 간접 확인)
+  const look = await page.evaluate(async () => (await (await fetch('/api/survey/lookup', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: '홍길동', phone: '01012345678' }) })).json()));
+  if (!look.found || look.answers.region !== '부산 해운대') throw new Error('row was not updated: ' + JSON.stringify(look));
+
+  // 다른 이름이면 선택 화면 없이 2단계로 진행 (제출 시 연락처로 중복 처리됨)
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForSelector('#loader.off');
   await page.fill('#fName', '다른사람'); await page.fill('#fPhone', '010-1234-5678'); await page.fill('#fCohort', '3기');

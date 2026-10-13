@@ -11,19 +11,19 @@ function createFakeSheets(seed = {}) {
     setupCalls: [],
   };
 
-  const idx = (key) => SURVEY_COLUMNS.findIndex((c) => c.key === key);
 
   return {
     state,
     async readChallengeRooms() { return state.rooms.map((r) => ({ ...r })); },
     async readSurveySubmissions() {
-      return state.submissions.map((row) => ({
-        cohort: row[idx('cohort')] || '',
-        name: row[idx('name')] || '',
-        phone: row[idx('phone')] || '',
-      }));
+      return state.submissions.map((row, i) => {
+        const o = { row: i + 2 };
+        SURVEY_COLUMNS.forEach((c, ci) => { o[c.key] = String(row[ci] == null ? '' : row[ci]).trim(); });
+        return o;
+      }).filter((r) => r.phone);
     },
     async appendSurveyResponse(row) { state.submissions.push(row.slice()); },
+    async updateSurveyResponse(rowNumber, row) { state.submissions[rowNumber - 2] = row.slice(); },
     async setupSurveySheet() { state.setupCalls.push('survey'); state.tabsReady = true; return { spreadsheetId: 'fake-survey', created: ['설문응답', '챌린지링크'], renamed: [], headersWritten: ['설문응답', '챌린지링크'], untouched: [] }; },
     async checkSurveySheet() { return { ok: true, spreadsheetId: 'fake-survey', checks: [{ name: '가짜 시트', ok: true, detail: '로컬 모드' }], fix: [] }; },
     // 기존 파이프라인 함수(사용 안 함)

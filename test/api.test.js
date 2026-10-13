@@ -63,24 +63,45 @@ test('submit: appends row and returns the three rooms with password', async () =
   const res = mockRes();
   await h.submit(mockReq({ body: { ...fullSurvey, phone: '01012345678' } }), res);
   assert.equal(res.statusCode, 200);
-  assert.deepEqual(res.body, { ok: true, alreadySubmitted: false, rooms: EXPECTED_ROOMS });
+  assert.deepEqual(res.body, { ok: true, alreadySubmitted: false, updated: false, rooms: EXPECTED_ROOMS });
   assert.equal(fake.state.submissions.length, 1);
   const row = fake.state.submissions[0];
   assert.equal(row[1], '3기');
   assert.equal(row[2], '홍길동');
   assert.equal(row[4], '010-1234-5678', 'phone stored in normalized form');
-  assert.equal(row[row.length - 1], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
+  assert.equal(row[15], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
+  assert.equal(row[16], '', 'updatedAt empty on first submit');
 });
 
-test('submit: duplicate phone returns rooms without appending', async () => {
+test('submit: duplicate phone returns rooms without appending; mode=update overwrites own row', async () => {
   const h = freshHandlers();
   let res = mockRes();
   await h.submit(mockReq({ body: fullSurvey }), res);
+  const originalSubmittedAt = fake.state.submissions[0][0];
+
   res = mockRes();
   await h.submit(mockReq({ body: { ...fullSurvey, name: '홍길동2', phone: '010 1234 5678' } }), res);
   assert.equal(res.body.alreadySubmitted, true);
+  assert.equal(res.body.updated, false);
   assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
   assert.equal(fake.state.submissions.length, 1);
+
+  // 다른 이름 + mode=update → 덮어쓰지 않음
+  res = mockRes();
+  await h.submit(mockReq({ body: { ...fullSurvey, name: '김영희', mode: 'update', region: '제주' } }), res);
+  assert.equal(res.body.updated, false);
+  assert.equal(fake.state.submissions[0][7], '서울');
+
+  // 같은 이름 + mode=update → 기존 행 덮어쓰기, 제출일시 유지, 수정일시 기록
+  res = mockRes();
+  await h.submit(mockReq({ body: { ...fullSurvey, name: '홍 길동', mode: 'update', region: '제주', nickname: '길동' } }), res);
+  assert.deepEqual({ ok: res.body.ok, already: res.body.alreadySubmitted, updated: res.body.updated }, { ok: true, already: true, updated: true });
+  assert.equal(fake.state.submissions.length, 1);
+  const row = fake.state.submissions[0];
+  assert.equal(row[0], originalSubmittedAt);
+  assert.equal(row[3], '길동');
+  assert.equal(row[7], '제주');
+  assert.match(row[16], /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
 });
 
 test('submit: empty sheet tab → built-in default rooms; all inactive → no rooms', async () => {
@@ -156,6 +177,9 @@ test('lookup: found only when both name and phone match a prior submission', asy
   await h.lookup(mockReq({ body: { name: '홍 길동', phone: '01012345678' } }), res);
   assert.equal(res.body.found, true);
   assert.deepEqual(res.body.rooms, EXPECTED_ROOMS);
+  assert.equal(res.body.answers.region, '서울');
+  assert.equal(res.body.answers.cohort, '3기');
+  assert.ok(!('phone' in res.body.answers));
 
   res = mockRes();
   await h.lookup(mockReq({ body: { name: '김영희', phone: '010-1234-5678' } }), res);

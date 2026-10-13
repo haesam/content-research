@@ -60,7 +60,22 @@ test('buildSurveyRow follows SURVEY_COLUMNS order and lists room names', () => {
   assert.equal(row[2], '홍 길동');
   assert.equal(row[3], 'nick');
   assert.equal(row[4], '010-1234-5678');
-  assert.equal(row[row.length - 1], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
+  assert.equal(row[15], '콘텐츠 챌린지 단톡방, 제작 챌린지 단톡방, 영업 챌린지 단톡방');
+  assert.equal(row[16], '');
+  const upd = s.buildSurveyRow({ values, rooms, submittedAt: '2026-09-01 10:00:00', updatedAt: '2026-09-02 09:00:00' });
+  assert.equal(upd[0], '2026-09-01 10:00:00', 'update keeps original submittedAt');
+  assert.equal(upd[16], '2026-09-02 09:00:00');
+});
+
+test('findExistingSubmission optionally requires name; pickAnswers excludes name/phone', () => {
+  const rows = [{ name: '홍 길동', phone: '010-1234-5678', nickname: 'n', cohort: '3기', ageGroup: '29' }];
+  assert.ok(s.findExistingSubmission(rows, '01012345678', '홍길동'));
+  assert.equal(s.findExistingSubmission(rows, '01012345678', '김영희'), null);
+  const a = s.pickAnswers(rows[0]);
+  assert.equal(a.nickname, 'n');
+  assert.equal(a.cohort, '3기');
+  assert.equal(a.gender, '');
+  assert.ok(!('name' in a) && !('phone' in a));
 });
 
 test('findExistingSubmission compares digits only', () => {

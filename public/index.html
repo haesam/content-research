@@ -113,6 +113,12 @@
   @keyframes spin{to{transform:rotate(360deg)}}
   .row-btns{display:flex;gap:12px;margin-top:28px}
   .row-btns .btn{flex:1}
+  .choice{display:flex;flex-direction:column;gap:12px;padding-top:6px}
+  .choice .step-title{margin-bottom:0}
+  .choice .step-title .accent{background:linear-gradient(90deg,#FFD9A0,#FF9E8A);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .choice .step-desc{margin-bottom:8px}
+  .choice .note{margin-top:6px}
+  .choice .note a{color:rgba(230,214,240,.6);text-decoration:underline}
   .note{font-size:12.5px;color:rgba(230,214,240,.55);text-align:center;margin-top:16px;line-height:1.7}
   .alert{margin-top:18px;padding:14px 16px;border-radius:8px;background:rgba(255,126,107,.12);border:1px solid rgba(255,126,107,.4);color:#FFD1C8;font-size:14px;line-height:1.75;white-space:pre-line}
   .progress{display:flex;align-items:center;gap:14px;margin-bottom:30px}
@@ -308,6 +314,14 @@
             </div>
           </div>
 
+          <div class="choice" id="choiceBox" hidden>
+            <h3 class="step-title">다시 오셨군요, <span class="accent" id="choiceName"></span> 시민님</h3>
+            <p class="step-desc">이미 제출하신 내용이 있어요. 어떻게 할까요?</p>
+            <button class="btn kakao" type="button" id="goRoomsBtn">챌린지 단톡방으로 바로 가기</button>
+            <button class="btn ghost" type="button" id="editBtn">제출한 내용 수정하기</button>
+            <p class="note"><a href="#" id="choiceBackBtn">다른 정보로 다시 입력하기</a></p>
+          </div>
+
           <div class="row-btns">
             <button class="btn ghost" type="button" id="prevBtn">이전</button>
             <button class="btn" type="button" id="nextBtn"><i class="spin"></i>다음</button>
@@ -346,7 +360,7 @@
   const API = { submit: '/api/survey/submit', lookup: '/api/survey/lookup' };
   const DRAFT_KEY = 'nadaun_survey_draft_v2';
   const TOTAL_STEPS = 4;
-  const state = { step: 1 };
+  const state = { step: 1, mode: null, returning: null };
 
   const $ = (s, r) => (r||document).querySelector(s);
   const $$ = (s, r) => Array.prototype.slice.call((r||document).querySelectorAll(s));
@@ -428,21 +442,55 @@
   prevBtn.addEventListener('click', () => goStep(state.step - 1));
   nextBtn.addEventListener('click', async () => {
     if(!validateStep(state.step)) return;
-    if(state.step === 1){
-      /* 이미 제출한 시민이면 설문을 건너뛰고 바로 단톡방 안내로 */
+    if(state.step === 1 && !state.mode){
+      /* 이미 제출한 시민이면 바로 입장할지, 내용을 수정할지 고르게 한다 */
       const name = $('#fName').value.trim(), phone = fPhone.value.trim();
       setBusy(nextBtn, true);
       const data = await postJson(API.lookup, { name, phone });
       setBusy(nextBtn, false);
       if(data.ok && data.found){
-        clearDraft();
-        renderDone({ name, already:true, rooms: Array.isArray(data.rooms) ? data.rooms : [] });
+        state.returning = { name, rooms: Array.isArray(data.rooms) ? data.rooms : [], answers: data.answers || {} };
+        showChoice(name);
         return;
       }
       /* 조회 실패(네트워크 등)는 막지 않고 설문을 이어간다 — 제출 시 다시 확인됨 */
     }
     goStep(state.step + 1);
   });
+
+  /* ---------- 재방문: 바로 입장 / 내용 수정 선택 ---------- */
+  const choiceBox = $('#choiceBox');
+  function showChoice(name){
+    $('#choiceName').textContent = name;
+    steps.forEach(s => { s.hidden = true; });
+    $('.row-btns', surveyForm).hidden = true;
+    $('.progress', stages.survey).hidden = true;
+    choiceBox.hidden = false;
+    setAlert(surveyAlert, '');
+    scrollToCard();
+  }
+  function hideChoice(){
+    choiceBox.hidden = true;
+    $('.row-btns', surveyForm).hidden = false;
+    $('.progress', stages.survey).hidden = false;
+  }
+  $('#goRoomsBtn').addEventListener('click', () => {
+    const r = state.returning; if(!r) return;
+    clearDraft();
+    hideChoice();
+    renderDone({ name: r.name, already:true, rooms: r.rooms });
+  });
+  $('#editBtn').addEventListener('click', () => {
+    const r = state.returning; if(!r) return;
+    state.mode = 'update';
+    /* 이전 답변으로 폼을 채운다 (성함·연락처는 방금 입력한 값 유지) */
+    fieldInputs.forEach(i => { if(i.name !== 'name' && i.name !== 'phone' && typeof r.answers[i.name] === 'string') i.value = r.answers[i.name]; });
+    saveDraft();
+    submitBtn.lastChild.textContent = '수정하고 입장하기';
+    hideChoice();
+    goStep(2);
+  });
+  $('#choiceBackBtn').addEventListener('click', () => { state.returning = null; hideChoice(); goStep(1); });
   fieldInputs.forEach(i => i.addEventListener('input', () => { markInvalid(i, false); saveDraft(); }));
 
   function collect(){
@@ -469,6 +517,7 @@
     setAlert(surveyAlert, '');
     setBusy(submitBtn, true);
     const body = collect();
+    if(state.mode === 'update') body.mode = 'update';
     const data = await postJson(API.submit, body);
     setBusy(submitBtn, false);
     if(!data.ok){
@@ -482,7 +531,7 @@
       return;
     }
     clearDraft();
-    renderDone({ name: (body.name || '').trim(), already: !!data.alreadySubmitted, rooms: Array.isArray(data.rooms) ? data.rooms : [] });
+    renderDone({ name: (body.name || '').trim(), already: !!data.alreadySubmitted, updated: !!data.updated, rooms: Array.isArray(data.rooms) ? data.rooms : [] });
   });
 
   /* ---------- 완료 ---------- */
@@ -494,11 +543,15 @@
     setTimeout(() => { copyBtn.textContent = '복사'; }, 1800);
   });
 
-  function renderDone({ name, already, rooms }){
+  function renderDone({ name, already, updated, rooms }){
     const title = $('#doneTitle'), lead = $('#doneLead'), box = $('#noLinkBox'), note = $('#doneNote'), eyebrow = $('#doneEyebrow');
     const passBox = $('#passBox'), passCode = $('#passCode'), pickHint = $('#pickHint'), roomList = $('#roomList');
     const hasRooms = rooms.length > 0;
-    if(already){
+    if(updated){
+      eyebrow.textContent = 'UPDATED · 수정 완료';
+      title.innerHTML = '고마워요,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
+      lead.textContent = hasRooms ? '내용이 업데이트되었어요. 챌린지 단톡방에서 이어서 만나요.' : '내용이 업데이트되었어요.';
+    } else if(already){
       eyebrow.textContent = 'WELCOME BACK · 다시 오셨군요';
       title.innerHTML = '다시 오셨군요,<br><span class="accent">' + escapeHtml(name) + '</span> 시민님';
       lead.textContent = hasRooms ? '이미 제출을 완료하셨어요. 아래에서 단톡방으로 바로 입장하실 수 있어요.' : '이미 제출을 완료하셨어요.';
